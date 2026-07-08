@@ -35,4 +35,26 @@
 
 ## 当前实现
 
-Phase 0 只有 FastAPI 配置、应用工厂、健康检查和自动化测试。其余组件按路线逐步加入。
+Phase 1 已实现可重复故障实验。Phase 2 已增加可靠 Incident 控制面：
+
+```text
+POST /incidents
+  -> MySQL: Incident + Audit Event + Outbox（同一事务）
+  -> Outbox Relay（短租约、失败重试）
+  -> RocketMQ 5 Proxy
+  -> 幂等 Consumer
+  -> INVESTIGATION_QUEUED
+```
+
+- 两个 FastAPI 实验服务共用一个版本化镜像。
+- Prometheus 每秒采集 HTTP、延迟、下游状态和故障模式。
+- 场景运行器在注入前后计算指标差值，并在恢复后检查正常请求。
+- 每次运行保存 Ground Truth、请求、指标和结果。
+- MySQL 保存 Incident 当前状态、只追加审计事件、Outbox 与消费幂等记录。
+- RocketMQ 不可用时 API 仍可落库，恢复后 Relay 自动补发。
+- 消费端只在 MySQL 事务提交后确认消息，重复消息不重复推进状态。
+- Phase 3 增加 Prometheus Metrics 与服务 Health 两个白名单 Typed Tool。
+- Tool Observation 以排他文件写入保存，MySQL 只保存可检索元数据与 SHA-256。
+- Evidence 表由 Trigger 禁止更新和删除，内容读取前必须通过哈希校验。
+
+Agent、RCA 和恢复执行器尚未实现。

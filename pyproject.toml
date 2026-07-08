@@ -9,15 +9,19 @@ description = "Evidence-driven multi-agent AIOps incident diagnosis and safe rec
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115,<1.0",
-    "pydantic-settings>=2.8,<3.0",
-    "uvicorn[standard]>=0.34,<1.0",
+    "fastapi==0.139.0",
+    "httpx==0.28.1",
+    "PyMySQL[rsa]==1.1.2",
+    "prometheus-client==0.25.0",
+    "pydantic==2.13.3",
+    "pydantic-settings==2.14.2",
+    "rocketmq-python-client==5.1.1",
+    "uvicorn[standard]==0.50.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "httpx>=0.28,<1.0",
-    "pytest>=8.3,<10.0",
+    "pytest==9.1.1",
 ]
 
 [tool.setuptools.packages.find]

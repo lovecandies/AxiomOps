@@ -18,13 +18,13 @@
 
 | 上游模块 | 计划阶段 | 处理方式 |
 |---|---|---|
-| `python/models/time_series.py` | Phase 1 | 保留算法主体，修复接口并增加 Ground Truth 测试 |
-| `python/config/prometheus.yml` | Phase 1 | 改造成故障实验环境的采集配置 |
+| `python/models/time_series.py` | Phase 3 | 在 Ground Truth 基线上选择性迁移为 Metrics Tool 的确定性检测器 |
+| `python/config/prometheus.yml` | Phase 1 | 已改造成双服务故障实验的采集配置 |
 | `python/models/events.py` | Phase 2 | 保留事件枚举思路，按 MySQL 最终事实模型重构 |
 | `python/core/event_bus.py` | Phase 2 | 保留发布/订阅接口，底层替换为 RocketMQ + Outbox |
 | `python/core/knowledge_graph.py` | Phase 3/4 | 保留拓扑遍历逻辑，数据源改为服务目录，不引入 Neo4j |
 | `python/agents/base_agent.py` | Phase 4 | 仅保留指标统计思路，Agent 生命周期交给 LangGraph |
-| `python/agents/monitor_agent.py` | Phase 1/3 | 拆成确定性检测器与 Typed Metrics Tool |
+| `python/agents/monitor_agent.py` | Phase 3 | 拆成确定性检测器与 Typed Metrics Tool |
 | `python/agents/rca_agent.py` | Phase 4 | 移除写死拓扑和伪贝叶斯，改为 Evidence 驱动 RCA |
 | `python/core/orchestrator.py` | Phase 4/5 | 替换为 LangGraph StateGraph、Interrupt、Checkpoint、Resume |
 | `python/agents/heal_agent.py` | Phase 6 | Playbook、熔断和爆炸半径概念迁入确定性节点 |

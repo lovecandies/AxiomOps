@@ -1,0 +1,18 @@
+{
+  "scenario_id": "inventory_unavailable",
+  "title": "Inventory dependency unavailable",
+  "affected_service": "inventory-service",
+  "root_cause": "injected_dependency_unavailable",
+  "fault": {
+    "mode": "unavailable",
+    "delay_ms": 0,
+    "error_rate": 0.0
+  },
+  "request_count": 5,
+  "expected": {
+    "statuses": [503],
+    "minimum_average_latency_ms": 0
+  },
+  "allowed_actions": ["reset_fault"],
+  "success_condition": "all_recovery_requests_return_200"
+}

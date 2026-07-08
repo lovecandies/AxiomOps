@@ -1,0 +1,18 @@
+{
+  "scenario_id": "inventory_latency",
+  "title": "Inventory dependency latency",
+  "affected_service": "inventory-service",
+  "root_cause": "injected_response_delay",
+  "fault": {
+    "mode": "latency",
+    "delay_ms": 800,
+    "error_rate": 0.0
+  },
+  "request_count": 5,
+  "expected": {
+    "statuses": [200],
+    "minimum_average_latency_ms": 700
+  },
+  "allowed_actions": ["reset_fault"],
+  "success_condition": "average_latency_returns_below_500ms"
+}

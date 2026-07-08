@@ -1,9 +1,9 @@
 # AxiomOps 执行路线
 
-1. Phase 0：项目骨架与健康检查。
-2. Phase 1：可重复微服务故障实验，保存 Ground Truth。
-3. Phase 2：MySQL + Outbox + RocketMQ 可靠 Incident 控制面。
-4. Phase 3：Typed Tools 与 Evidence。
+1. Phase 0：项目骨架与健康检查。`completed`
+2. Phase 1：可重复微服务故障实验，保存 Ground Truth。`completed`
+3. Phase 2：MySQL + Outbox + RocketMQ 可靠 Incident 控制面。`completed`
+4. Phase 3：Typed Tools 与 Evidence。`completed`
 5. Phase 4：LangGraph 多 Agent 只读 RCA。
 6. Phase 5：Redis Checkpoint、上下文压缩、Qdrant 记忆。
 7. Phase 6：权限、人工审批、Sandbox、恢复验证与回滚。
