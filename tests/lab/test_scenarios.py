@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from axiom_ops.lab.scenario_runner import evaluate_observations
+from axiom_ops.lab import scenario_runner
+from axiom_ops.lab.scenario_runner import evaluate_observations, wait_for_fault_metrics
 from axiom_ops.lab.scenarios import load_scenarios
 
 
@@ -79,3 +80,35 @@ def test_scenario_evaluation_requires_prometheus_evidence() -> None:
     assert passed["passed"] is True
     assert missing_metrics["passed"] is False
     assert missing_metrics["metrics_match"] is False
+
+
+def test_fault_metric_collection_polls_until_scrape_contains_signal(monkeypatch) -> None:
+    scenario = next(
+        scenario
+        for scenario in load_scenarios(SCENARIO_DIRECTORY)
+        if scenario.scenario_id == "inventory_error_rate"
+    )
+    failure_values = iter((2.0, 5.0))
+
+    def fake_query(client, prometheus_url, query):
+        if "fault_mode" in query:
+            value = 1.0
+        elif "downstream_requests" in query:
+            value = next(failure_values)
+        else:
+            value = 0.1
+        return {"data": {"result": [{"value": [0, str(value)]}]}}
+
+    monkeypatch.setattr(scenario_runner, "query_prometheus", fake_query)
+    monkeypatch.setattr(scenario_runner, "sleep", lambda _: None)
+
+    observed = wait_for_fault_metrics(
+        object(),
+        "http://prometheus",
+        scenario,
+        {"downstream_failures": 0.0, "order_duration_seconds": 0.0},
+        1.0,
+    )
+
+    assert observed["active_fault"] == 1.0
+    assert observed["downstream_failures"] == 5.0

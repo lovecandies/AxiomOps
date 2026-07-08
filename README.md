@@ -156,3 +156,5 @@ $env:DEEPSEEK_MODEL = "deepseek-v4-pro"
 项目仓库：[`lovecandies/AxiomOps`](https://github.com/lovecandies/AxiomOps)
 
 详细取舍见 [上游迁移清单](docs/upstream-audit.md)、[架构基线](docs/architecture.md) 和各阶段蓝图。
+
+Phase 1–5 最新完整性复审与黑盒记录见 [Phase 1–5 完整性审计](docs/phase-1-5-audit.md)。

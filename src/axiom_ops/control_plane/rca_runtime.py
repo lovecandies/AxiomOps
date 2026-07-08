@@ -72,6 +72,12 @@ class RcaRuntime:
         self.context_evidence_chars = context_evidence_chars
         self.memory_top_k = memory_top_k
 
+    @staticmethod
+    def _validate_model(model: RcaModel) -> None:
+        validate = getattr(model, "validate_configuration", None)
+        if callable(validate):
+            validate()
+
     def _historical_memory(self, incident: dict[str, Any]) -> list[dict[str, Any]]:
         if self.memory_store is None:
             return []
@@ -135,6 +141,7 @@ class RcaRuntime:
         )
         started = perf_counter()
         try:
+            self._validate_model(model)
             if not metadata:
                 raise RuntimeError("RCA requires at least one verified Evidence")
             evidence = [
@@ -193,6 +200,7 @@ class RcaRuntime:
         self.rca_repository.resume_run(run_id)
         started = perf_counter()
         try:
+            self._validate_model(model)
             with self.checkpoint_factory() as checkpointer:
                 graph = ReadOnlyRcaGraph(model, checkpointer)
                 result = graph.resume(run_id)

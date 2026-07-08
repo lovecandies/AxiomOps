@@ -51,3 +51,5 @@ restart persistence: passed
 ## 阶段结论
 
 Phase 4 已满足“图编排可执行、子上下文隔离、并行调查可证明、引用越界可拒绝、独立验证可审计、模型失败不污染最终 RCA”的工程完成条件。真实 DeepSeek 质量评测需由有效 API Key 单独执行并记录。
+
+2026-07-09 复审修正了缺 Key 时的预检顺序。Run `7baba824-8f52-470a-b1c6-4d0730a986cb` 在不初始化 embedding 的情况下快速返回 `FAILED` 并保留完整错误审计。

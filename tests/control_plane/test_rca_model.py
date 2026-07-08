@@ -70,4 +70,7 @@ def test_deepseek_model_fails_closed_without_api_key() -> None:
     model = DeepSeekRcaModel(ControlPlaneSettings(deepseek_api_key=None))
 
     with pytest.raises(RcaModelError, match="not configured"):
+        model.validate_configuration()
+
+    with pytest.raises(RcaModelError, match="not configured"):
         model.plan({"id": "incident-1"}, [])

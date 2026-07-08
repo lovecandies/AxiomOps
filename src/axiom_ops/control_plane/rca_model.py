@@ -83,6 +83,10 @@ class DeepSeekRcaModel:
         with self._lock:
             return self._total_tokens
 
+    def validate_configuration(self) -> None:
+        if not self.api_key:
+            raise RcaModelError("DEEPSEEK_API_KEY is not configured")
+
     def _reserve_call(self) -> None:
         with self._lock:
             if self._call_count >= self.max_calls:
@@ -95,8 +99,7 @@ class DeepSeekRcaModel:
         system_prompt: str,
         payload: dict[str, Any],
     ) -> OutputModel:
-        if not self.api_key:
-            raise RcaModelError("DEEPSEEK_API_KEY is not configured")
+        self.validate_configuration()
         schema = output_model.model_json_schema()
         user_prompt = json.dumps(
             {

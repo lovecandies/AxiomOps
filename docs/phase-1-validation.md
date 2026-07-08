@@ -60,3 +60,13 @@ result.json
 ## 阶段结论
 
 Phase 1 已满足“故障可重复、指标可观察、Ground Truth 可保存、恢复可验证”的完成条件，可以进入 Phase 2。
+
+## 2026-07-09 复审
+
+冷启动复测发现并修复 Prometheus 首轮抓取竞态。修复后三场景从完全停止状态重新启动并全部通过：
+
+```text
+inventory_error_rate-20260708T164248Z-61256a43
+inventory_latency-20260708T164253Z-751b0487
+inventory_unavailable-20260708T164259Z-8be84eb9
+```

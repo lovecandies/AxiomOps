@@ -64,3 +64,11 @@ REJECTED Run `b3608730-737b-447c-9c14-d5f18069f33d` 未生成 RCA Report，Qdran
 ## 阶段结论
 
 Phase 5 已满足“故障后同 Run 可恢复、已完成节点不重复、上下文预算可审计、Evidence 身份不丢失、只有已验证 RCA 可进入持久化记忆”的工程完成条件。
+
+## 2026-07-09 复审
+
+- Redis 重启续跑 Run：`c3e94657-94ed-4c75-888c-0b266e391033`，同一 Run 从 `FAILED` 到 `COMPLETED`。
+- 节点计数：Commander 1、Investigator 3、Synthesizer 1、Verifier 1。
+- Qdrant 重启后召回 3 条已验证历史 RCA。
+- REJECTED Run `fbb6df11-d8b0-4672-b25e-b6237422bcbb` 前后向量点数均为 3。
+- 空记忆库现在不会初始化 FastEmbed 推理。

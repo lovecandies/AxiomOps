@@ -83,6 +83,8 @@ class RcaMemoryStore:
 
     def search(self, incident: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         self.setup()
+        if self.client.count(self.collection, exact=True).count == 0:
+            return []
         vector = self.embedder.embed([self.incident_text(incident)])[0]
         result = self.client.query_points(
             collection_name=self.collection,

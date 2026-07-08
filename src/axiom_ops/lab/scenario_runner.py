@@ -68,6 +68,76 @@ def prometheus_value(payload: dict[str, Any]) -> float:
     return float(results[0]["value"][1])
 
 
+def wait_for_prometheus_series(
+    client: httpx.Client,
+    prometheus_url: str,
+    query: str,
+    timeout_seconds: float,
+) -> None:
+    deadline = perf_counter() + timeout_seconds
+    while perf_counter() < deadline:
+        payload = query_prometheus(client, prometheus_url, query)
+        if payload.get("data", {}).get("result", []):
+            return
+        sleep(0.5)
+    raise RuntimeError("Prometheus did not scrape the lab services in time")
+
+
+def wait_for_fault_metrics(
+    client: httpx.Client,
+    prometheus_url: str,
+    scenario: ScenarioDefinition,
+    baseline_metrics: dict[str, float],
+    timeout_seconds: float,
+) -> dict[str, float]:
+    deadline = perf_counter() + timeout_seconds
+    observed = {
+        "active_fault": 0.0,
+        "downstream_failures": 0.0,
+        "order_duration_seconds": 0.0,
+    }
+    while perf_counter() < deadline:
+        observed = {
+            "active_fault": prometheus_value(
+                query_prometheus(
+                    client,
+                    prometheus_url,
+                    (
+                        "axiomops_lab_fault_mode"
+                        f'{{service="inventory-service",mode="{scenario.fault.mode}"}}'
+                    ),
+                )
+            ),
+            "downstream_failures": prometheus_value(
+                query_prometheus(client, prometheus_url, FAILURE_QUERY)
+            ),
+            "order_duration_seconds": prometheus_value(
+                query_prometheus(client, prometheus_url, DURATION_QUERY)
+            ),
+        }
+        if scenario.fault.mode == "latency":
+            minimum_delta = (
+                scenario.expected.minimum_average_latency_ms
+                * scenario.request_count
+                / 1000
+            )
+            signal_ready = (
+                observed["order_duration_seconds"]
+                - baseline_metrics["order_duration_seconds"]
+                >= minimum_delta
+            )
+        else:
+            signal_ready = (
+                observed["downstream_failures"]
+                - baseline_metrics["downstream_failures"]
+                >= scenario.request_count
+            )
+        if observed["active_fault"] == 1.0 and signal_ready:
+            return observed
+        sleep(0.5)
+    return observed
+
+
 def evaluate_observations(
     scenario: ScenarioDefinition,
     fault_requests: list[dict[str, Any]],
@@ -122,7 +192,7 @@ def run_scenario(
     order_base_url: str = "http://127.0.0.1:18001",
     inventory_base_url: str = "http://127.0.0.1:18002",
     prometheus_url: str = "http://127.0.0.1:19090",
-    scrape_wait_seconds: float = 2.0,
+    scrape_timeout_seconds: float = 15.0,
 ) -> tuple[Path, dict[str, Any]]:
     run_id = (
         f"{scenario.scenario_id}-"
@@ -143,7 +213,12 @@ def run_scenario(
             baseline = collect_requests(client, order_base_url, 2)
             if not all(request["status"] == 200 for request in baseline):
                 raise RuntimeError("lab baseline is not healthy")
-            sleep(scrape_wait_seconds)
+            wait_for_prometheus_series(
+                client,
+                prometheus_url,
+                DURATION_QUERY,
+                scrape_timeout_seconds,
+            )
             baseline_metrics = {
                 "downstream_failures": prometheus_value(
                     query_prometheus(client, prometheus_url, FAILURE_QUERY)
@@ -163,25 +238,13 @@ def run_scenario(
                 scenario.request_count,
             )
 
-            sleep(scrape_wait_seconds)
-            observed_metrics = {
-                "active_fault": prometheus_value(
-                    query_prometheus(
-                        client,
-                        prometheus_url,
-                        (
-                            "axiomops_lab_fault_mode"
-                            f'{{service="inventory-service",mode="{scenario.fault.mode}"}}'
-                        ),
-                    )
-                ),
-                "downstream_failures": prometheus_value(
-                    query_prometheus(client, prometheus_url, FAILURE_QUERY)
-                ),
-                "order_duration_seconds": prometheus_value(
-                    query_prometheus(client, prometheus_url, DURATION_QUERY)
-                ),
-            }
+            observed_metrics = wait_for_fault_metrics(
+                client,
+                prometheus_url,
+                scenario,
+                baseline_metrics,
+                scrape_timeout_seconds,
+            )
             metrics = {
                 "baseline": baseline_metrics,
                 "observed": observed_metrics,
