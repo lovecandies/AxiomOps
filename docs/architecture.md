@@ -60,5 +60,8 @@ POST /incidents
 - 每个 Investigator 只接收按角色过滤的 Evidence 子上下文。
 - RCA 必须先通过确定性引用校验，再由 Independent Verifier 审核。
 - 只有 `APPROVED` Run 生成不可变 RCA Report；失败与拒绝均保留审计 Run。
+- Phase 5 使用 MySQL Run ID 作为 Redis Checkpoint `thread_id`，失败后在同一 Run 上续跑。
+- Evidence 先转换为确定性 Capsule，保留身份与哈希并执行上下文字符预算。
+- Qdrant 只索引已验证 RCA；召回结果仅作为 Commander 的不可引用历史提示。
 
-Redis Checkpoint、长期记忆和恢复执行器尚未实现。
+恢复动作、人工审批、Sandbox 和回滚将在 Phase 6 实现。

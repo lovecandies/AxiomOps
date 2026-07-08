@@ -118,6 +118,43 @@ class RcaRepository:
                         ),
                     )
 
+    def create_context(
+        self,
+        run_id: str,
+        original_bytes: int,
+        compressed_bytes: int,
+        capsules: list[dict[str, Any]],
+    ) -> None:
+        with self.database.transaction() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO agent_run_contexts
+                        (run_id, original_bytes, compressed_bytes, capsules)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (
+                        run_id,
+                        original_bytes,
+                        compressed_bytes,
+                        json.dumps(capsules, ensure_ascii=False),
+                    ),
+                )
+
+    def resume_run(self, run_id: str) -> None:
+        with self.database.transaction() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE agent_runs
+                    SET status='RUNNING', error=NULL, completed_at=NULL
+                    WHERE id=%s AND status='FAILED'
+                    """,
+                    (run_id,),
+                )
+                if cursor.rowcount != 1:
+                    raise RuntimeError(f"RCA run is not FAILED: {run_id}")
+
     def fail_run(
         self,
         run_id: str,
@@ -158,11 +195,19 @@ class RcaRepository:
                     (run_id,),
                 )
                 steps = cursor.fetchall()
+                cursor.execute(
+                    "SELECT * FROM agent_run_contexts WHERE run_id=%s",
+                    (run_id,),
+                )
+                context = cursor.fetchone()
             run["evidence_ids"] = self._load_json(run["evidence_ids"])
             run["verification"] = self._load_json(run["verification"])
             for item in steps:
                 item["output"] = self._load_json(item["output"])
             run["steps"] = steps
+            if context is not None:
+                context["capsules"] = self._load_json(context["capsules"])
+            run["context"] = context
             return RcaRunView.model_validate(run)
         finally:
             connection.close()
@@ -178,6 +223,26 @@ class RcaRepository:
                     """,
                     (incident_id,),
                 )
+                report = cursor.fetchone()
+            if report is None:
+                return None
+            for key in (
+                "contributing_factors",
+                "rejected_hypotheses",
+                "evidence_ids",
+                "limitations",
+                "verification",
+            ):
+                report[key] = self._load_json(report[key])
+            return RcaReportView.model_validate(report)
+        finally:
+            connection.close()
+
+    def get_report_for_run(self, run_id: str) -> RcaReportView | None:
+        connection = self.database.connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM rca_reports WHERE run_id=%s", (run_id,))
                 report = cursor.fetchone()
             if report is None:
                 return None

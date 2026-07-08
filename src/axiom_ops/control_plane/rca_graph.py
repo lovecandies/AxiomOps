@@ -16,7 +16,7 @@ from axiom_ops.control_plane.models import (
 from axiom_ops.control_plane.rca_model import RcaModel
 
 
-GRAPH_VERSION = "phase4-v1"
+GRAPH_VERSION = "phase5-v1"
 
 ROLE_EVIDENCE_KINDS = {
     InvestigatorRole.METRICS: {"METRIC_SNAPSHOT", "SERVICE_HEALTH"},
@@ -32,6 +32,7 @@ class RcaGraphError(Exception):
 class RcaState(TypedDict, total=False):
     incident: dict[str, Any]
     evidence: list[dict[str, Any]]
+    historical_memory: list[dict[str, Any]]
     plan: dict[str, Any]
     task: dict[str, Any]
     task_evidence: list[dict[str, Any]]
@@ -47,11 +48,11 @@ def step(node_name: str, output: dict[str, Any], role: str | None = None) -> dic
 
 
 class ReadOnlyRcaGraph:
-    def __init__(self, model: RcaModel) -> None:
+    def __init__(self, model: RcaModel, checkpointer=None) -> None:
         self.model = model
-        self.graph = self._build()
+        self.graph = self._build(checkpointer)
 
-    def _build(self):
+    def _build(self, checkpointer=None):
         builder = StateGraph(RcaState)
         builder.add_node("load_context", self._load_context)
         builder.add_node("commander", self._commander)
@@ -72,7 +73,7 @@ class ReadOnlyRcaGraph:
         )
         builder.add_edge("reject_citations", END)
         builder.add_edge("verifier", END)
-        return builder.compile()
+        return builder.compile(checkpointer=checkpointer)
 
     def _load_context(self, state: RcaState) -> dict[str, Any]:
         evidence_ids = [item["id"] for item in state["evidence"]]
@@ -91,7 +92,9 @@ class ReadOnlyRcaGraph:
             }
             for item in state["evidence"]
         ]
-        plan = self.model.plan(state["incident"], catalog)
+        commander_incident = dict(state["incident"])
+        commander_incident["historical_memory"] = state.get("historical_memory", [])
+        plan = self.model.plan(commander_incident, catalog)
         tasks = []
         for task in plan.tasks:
             allowed_kinds = ROLE_EVIDENCE_KINDS[task.role]
@@ -204,12 +207,23 @@ class ReadOnlyRcaGraph:
         self,
         incident: dict[str, Any],
         evidence: list[dict[str, Any]],
+        run_id: str | None = None,
+        historical_memory: list[dict[str, Any]] | None = None,
     ) -> RcaState:
+        config = {"configurable": {"thread_id": run_id}} if run_id else None
         return self.graph.invoke(
             {
                 "incident": incident,
                 "evidence": evidence,
+                "historical_memory": historical_memory or [],
                 "findings": [],
                 "steps": [],
-            }
+            },
+            config=config,
+        )
+
+    def resume(self, run_id: str) -> RcaState:
+        return self.graph.invoke(
+            None,
+            config={"configurable": {"thread_id": run_id}},
         )

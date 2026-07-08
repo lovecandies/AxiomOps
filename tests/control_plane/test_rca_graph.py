@@ -1,6 +1,7 @@
 import threading
 
 import pytest
+from langgraph.checkpoint.memory import InMemorySaver
 
 from axiom_ops.control_plane.models import (
     InvestigationPlan,
@@ -173,3 +174,36 @@ def test_investigator_cannot_claim_facts_without_role_evidence() -> None:
 
     with pytest.raises(RcaGraphError, match="produced claims without Evidence"):
         ReadOnlyRcaGraph(model).invoke(INCIDENT, EVIDENCE)
+
+
+class FailAtSynthesisModel(ParallelScriptedModel):
+    def synthesize(self, incident, findings) -> RcaDraft:
+        self._calls += 1
+        raise RuntimeError("synthetic crash")
+
+
+class ResumeAtSynthesisModel(ParallelScriptedModel):
+    def plan(self, incident, evidence_catalog) -> InvestigationPlan:
+        raise AssertionError("commander must not rerun")
+
+    def investigate(self, incident, task, evidence) -> InvestigatorFinding:
+        raise AssertionError("investigators must not rerun")
+
+
+def test_checkpoint_resumes_failed_node_without_repeating_completed_nodes() -> None:
+    checkpointer = InMemorySaver()
+    run_id = "run-resume-1"
+
+    with pytest.raises(RuntimeError, match="synthetic crash"):
+        ReadOnlyRcaGraph(FailAtSynthesisModel(), checkpointer).invoke(
+            INCIDENT,
+            EVIDENCE,
+            run_id,
+        )
+
+    resumed = ReadOnlyRcaGraph(ResumeAtSynthesisModel(), checkpointer).resume(run_id)
+
+    verification = VerificationResult.model_validate(resumed["verification"])
+    assert verification.decision == VerificationDecision.APPROVED
+    assert sum(step["node_name"] == "commander" for step in resumed["steps"]) == 1
+    assert sum(step["node_name"] == "investigate" for step in resumed["steps"]) == 3

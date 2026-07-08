@@ -1,7 +1,9 @@
 from collections.abc import Callable
 
 from fastapi import FastAPI, Header, HTTPException, Response
+from qdrant_client import QdrantClient
 
+from axiom_ops.control_plane.checkpoint import redis_checkpointer
 from axiom_ops.control_plane.config import ControlPlaneSettings
 from axiom_ops.control_plane.database import Database
 from axiom_ops.control_plane.evidence_repository import EvidenceRepository
@@ -24,11 +26,13 @@ from axiom_ops.control_plane.models import (
     RcaRunView,
 )
 from axiom_ops.control_plane.rca_model import DeepSeekRcaModel
+from axiom_ops.control_plane.rca_memory import FastEmbedder, RcaMemoryStore
 from axiom_ops.control_plane.rca_repository import RcaRepository
 from axiom_ops.control_plane.rca_runtime import (
     RcaIncidentNotFound,
     RcaReportNotFound,
     RcaRunNotFound,
+    RcaRunNotResumable,
     RcaRuntime,
 )
 from axiom_ops.control_plane.repository import IdempotencyConflict, IncidentRepository
@@ -60,6 +64,18 @@ def create_control_plane_app(
         EvidenceStorage(settings.evidence_root),
         RcaRepository(active_database),
         lambda: DeepSeekRcaModel(settings),
+        lambda: redis_checkpointer(settings.redis_url),
+        RcaMemoryStore(
+            QdrantClient(url=settings.qdrant_url),
+            FastEmbedder(
+                settings.memory_embedding_model,
+                settings.memory_embedding_dimension,
+            ),
+            settings.qdrant_collection,
+        ),
+        settings.context_total_chars,
+        settings.context_evidence_chars,
+        settings.memory_top_k,
     )
     application = FastAPI(title="AxiomOps Incident Control Plane", version="0.4.0")
 
@@ -175,6 +191,15 @@ def create_control_plane_app(
             return active_rca_runtime.get_run(run_id)
         except RcaRunNotFound as exc:
             raise HTTPException(status_code=404, detail="RCA run not found") from exc
+
+    @application.post("/rca-runs/{run_id}/resume", response_model=RcaRunView)
+    def resume_rca_run(run_id: str) -> RcaRunView:
+        try:
+            return active_rca_runtime.resume(run_id)
+        except RcaRunNotFound as exc:
+            raise HTTPException(status_code=404, detail="RCA run not found") from exc
+        except RcaRunNotResumable as exc:
+            raise HTTPException(status_code=409, detail="RCA run is not resumable") from exc
 
     @application.get("/incidents/{incident_id}/rca", response_model=RcaReportView)
     def get_latest_rca(incident_id: str) -> RcaReportView:

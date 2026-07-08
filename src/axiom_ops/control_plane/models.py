@@ -187,6 +187,13 @@ class RcaRunStep(BaseModel):
     created_at: datetime
 
 
+class RcaContextView(BaseModel):
+    original_bytes: int
+    compressed_bytes: int
+    capsules: list[dict[str, Any]]
+    created_at: datetime
+
+
 class RcaRunView(BaseModel):
     id: str
     incident_id: str
@@ -202,6 +209,7 @@ class RcaRunView(BaseModel):
     started_at: datetime
     completed_at: datetime | None
     steps: list[RcaRunStep]
+    context: RcaContextView | None = None
 
 
 class RcaReportView(BaseModel):

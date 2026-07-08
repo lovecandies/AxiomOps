@@ -47,6 +47,16 @@ Phase 5 只实现 Redis Checkpoint、上下文压缩和 Qdrant 记忆。恢复�
 
 Phase 4 的图结构、安全门与验证结果分别保存在 `docs/phase-4-blueprint.md` 和 `docs/phase-4-validation.md`。
 
+## Phase 5 实施约束
+
+- 实施蓝图以 `docs/phase-5-blueprint.md` 为准。
+- Redis Checkpoint 的 `thread_id` 必须等于 MySQL `agent_runs.id`，Resume 不得创建新 Run。
+- Evidence Capsule 必须确定性生成并保留 ID 与 SHA-256，不得用 LLM 重写。
+- Qdrant 只索引已验证 RCA；历史记忆永远不属于可引用 Evidence。
+- 未提供 DeepSeek Key 前，真实模型调用与质量评测保持“待完成”。
+
+Phase 5 已完成，验证数据保存在 `docs/phase-5-validation.md`。下一阶段是 Phase 6：权限、人工审批、Sandbox、恢复验证与回滚；未启动 Phase 6 前不得提前实现。
+
 Phase 3 的工具白名单、Evidence 契约、取舍与验证结果分别保存在 `docs/phase-3-blueprint.md` 和 `docs/phase-3-validation.md`。
 
 Phase 2 的事务边界、状态机、消息语义和验证结果分别保存在 `docs/phase-2-blueprint.md` 与 `docs/phase-2-validation.md`。

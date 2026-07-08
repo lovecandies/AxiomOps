@@ -2,7 +2,7 @@
 
 AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊断与安全恢复系统。
 
-当前已完成 **Phase 4：LangGraph 多 Agent 只读 RCA**。系统已建立可重复故障实验、可靠 Incident 调度、不可变 Evidence，以及带独立验证的只读根因分析链路。
+当前已完成 **Phase 5：Redis Checkpoint、上下文压缩与 Qdrant 记忆**。系统已建立可重复故障实验、可靠 Incident 调度、不可变 Evidence、带独立验证的只读 RCA，以及可恢复执行和已验证历史案例召回。
 
 ## 当前能力
 
@@ -23,6 +23,9 @@ AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊�
 - LangGraph Commander、动态并行 Investigator、RCA Synthesizer 与 Independent Verifier。
 - DeepSeek JSON 结构化输出、固定调用预算和失败关闭。
 - Evidence 引用安全门、Agent Run 步骤审计与不可变 RCA 报告。
+- Redis 持久化 LangGraph Checkpoint，失败 Run 使用同一 `run_id` 续跑。
+- 确定性 Evidence Capsule 执行上下文预算并保留 ID 与 SHA-256。
+- Qdrant 仅索引 Independent Verifier 批准的 RCA，历史提示不可作为 Evidence 引用。
 - pytest 单元与契约测试。
 
 ## 本地运行
@@ -134,6 +137,10 @@ $env:DEEPSEEK_MODEL = "deepseek-v4-pro"
 ```powershell
 .\.venv\Scripts\python.exe scripts\verify_rca_missing_key.py
 ```
+
+## 运行 Phase 5 恢复与记忆验证
+
+启动控制面后，验证脚本支持 `fail`、`resume`、`check-memory` 和 `reject` 四个动作。完整验证记录见 [Phase 5 验证记录](docs/phase-5-validation.md)。脚本使用明确标记的确定性评测模型与测试向量，不冒充 DeepSeek 或生产向量质量结果。
 
 ## 最终技术栈
 

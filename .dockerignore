@@ -3,7 +3,6 @@
 artifacts
 docs
 tests
-scripts
 **/__pycache__
 *.py[cod]
 *.egg-info
