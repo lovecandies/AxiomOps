@@ -158,3 +158,5 @@ $env:DEEPSEEK_MODEL = "deepseek-v4-pro"
 详细取舍见 [上游迁移清单](docs/upstream-audit.md)、[架构基线](docs/architecture.md) 和各阶段蓝图。
 
 Phase 1–5 最新完整性复审与黑盒记录见 [Phase 1–5 完整性审计](docs/phase-1-5-audit.md)。
+
+如果需要从头理解项目的开发步骤、设计思路、业务时序、数据模型和验证方法，阅读 [AxiomOps 从零到 Phase 5：完整技术实现详解](docs/AxiomOps-Phase0-5-完整技术详解.md)。
