@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class IncidentStatus(StrEnum):
@@ -113,3 +113,107 @@ class ToolObservation(BaseModel):
     observed_at: datetime
     duration_ms: float = Field(ge=0)
     data: dict[str, Any]
+
+
+class InvestigatorRole(StrEnum):
+    METRICS = "metrics_investigator"
+    LOGS_TRACE = "logs_trace_investigator"
+    CHANGE = "change_investigator"
+
+
+class InvestigationTask(BaseModel):
+    task_id: str = Field(min_length=1, max_length=64)
+    role: InvestigatorRole
+    question: str = Field(min_length=1, max_length=1000)
+    evidence_ids: list[str] = Field(default_factory=list)
+
+
+class InvestigationPlan(BaseModel):
+    tasks: list[InvestigationTask] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def require_all_roles(self) -> "InvestigationPlan":
+        roles = {task.role for task in self.tasks}
+        if roles != set(InvestigatorRole):
+            raise ValueError("plan must contain exactly one task for every investigator")
+        if len({task.task_id for task in self.tasks}) != len(self.tasks):
+            raise ValueError("task ids must be unique")
+        return self
+
+
+class InvestigatorFinding(BaseModel):
+    task_id: str
+    role: InvestigatorRole
+    summary: str = Field(min_length=1, max_length=2000)
+    observations: list[str] = Field(default_factory=list, max_length=20)
+    hypotheses: list[str] = Field(default_factory=list, max_length=10)
+    evidence_ids: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list, max_length=10)
+
+
+class RcaDraft(BaseModel):
+    summary: str = Field(min_length=1, max_length=2000)
+    root_cause: str = Field(min_length=1, max_length=2000)
+    confidence: float = Field(ge=0, le=1)
+    contributing_factors: list[str] = Field(default_factory=list, max_length=20)
+    rejected_hypotheses: list[str] = Field(default_factory=list, max_length=20)
+    evidence_ids: list[str] = Field(min_length=1)
+    limitations: list[str] = Field(default_factory=list, max_length=20)
+
+
+class VerificationDecision(StrEnum):
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class VerificationResult(BaseModel):
+    decision: VerificationDecision
+    rationale: str = Field(min_length=1, max_length=3000)
+    invalid_evidence_ids: list[str] = Field(default_factory=list)
+    unsupported_claims: list[str] = Field(default_factory=list, max_length=20)
+
+
+class RcaRunStatus(StrEnum):
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
+    FAILED = "FAILED"
+
+
+class RcaRunStep(BaseModel):
+    node_name: str
+    role: str | None
+    output: dict[str, Any]
+    created_at: datetime
+
+
+class RcaRunView(BaseModel):
+    id: str
+    incident_id: str
+    status: RcaRunStatus
+    model: str
+    graph_version: str
+    evidence_ids: list[str]
+    verification: VerificationResult | None
+    error: str | None
+    model_calls: int
+    total_tokens: int
+    duration_ms: int | None
+    started_at: datetime
+    completed_at: datetime | None
+    steps: list[RcaRunStep]
+
+
+class RcaReportView(BaseModel):
+    id: str
+    run_id: str
+    incident_id: str
+    summary: str
+    root_cause: str
+    confidence: float
+    contributing_factors: list[str]
+    rejected_hypotheses: list[str]
+    evidence_ids: list[str]
+    limitations: list[str]
+    verification: VerificationResult
+    created_at: datetime

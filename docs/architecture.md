@@ -56,5 +56,9 @@ POST /incidents
 - Phase 3 增加 Prometheus Metrics 与服务 Health 两个白名单 Typed Tool。
 - Tool Observation 以排他文件写入保存，MySQL 只保存可检索元数据与 SHA-256。
 - Evidence 表由 Trigger 禁止更新和删除，内容读取前必须通过哈希校验。
+- Phase 4 使用 LangGraph `StateGraph + Send` 动态并行三个 Investigator。
+- 每个 Investigator 只接收按角色过滤的 Evidence 子上下文。
+- RCA 必须先通过确定性引用校验，再由 Independent Verifier 审核。
+- 只有 `APPROVED` Run 生成不可变 RCA Report；失败与拒绝均保留审计 Run。
 
-Agent、RCA 和恢复执行器尚未实现。
+Redis Checkpoint、长期记忆和恢复执行器尚未实现。

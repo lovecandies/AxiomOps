@@ -62,16 +62,19 @@ services:
     environment:
       MYSQL_PWD: root
     volumes:
-      - ./mysql/002_evidence.sql:/migration.sql:ro
+      - ./mysql:/migrations:ro
     depends_on:
       mysql:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
     command:
-      - mysql -h mysql -u root axiomops < /migration.sql
+      - >-
+        for migration in /migrations/002_evidence.sql /migrations/003_rca.sql; do
+          mysql -h mysql -u root axiomops < $$migration || exit 1;
+        done
 
   control-plane:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase4
     build:
       context: ..
       dockerfile: ops-control-plane/Dockerfile
@@ -88,6 +91,8 @@ services:
       AXIOMOPS_CONTROL_ORDER_SERVICE_URL: http://host.docker.internal:18001
       AXIOMOPS_CONTROL_INVENTORY_SERVICE_URL: http://host.docker.internal:18002
       AXIOMOPS_CONTROL_EVIDENCE_ROOT: /var/lib/axiomops/evidence
+      AXIOMOPS_CONTROL_DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AXIOMOPS_CONTROL_DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-pro}
     ports:
       - "18000:8000"
     depends_on:
@@ -104,7 +109,7 @@ services:
       retries: 20
 
   outbox-relay:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase4
     pull_policy: never
     command: python -m axiom_ops.control_plane.relay
     environment: *control-environment
@@ -114,7 +119,7 @@ services:
     restart: unless-stopped
 
   investigation-consumer:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase4
     pull_policy: never
     command: python -m axiom_ops.control_plane.consumer
     environment: *control-environment

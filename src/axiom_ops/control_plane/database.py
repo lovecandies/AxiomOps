@@ -44,5 +44,6 @@ class Database:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1 FROM incidents LIMIT 1")
                 cursor.execute("SELECT 1 FROM evidence LIMIT 1")
+                cursor.execute("SELECT 1 FROM agent_runs LIMIT 1")
         finally:
             connection.close()

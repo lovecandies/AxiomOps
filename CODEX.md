@@ -39,10 +39,13 @@ AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊�
 - Phase 1：双服务故障实验、Prometheus、三个 Ground Truth 场景和实验产物。
 - Phase 2：MySQL Incident 控制面、Transactional Outbox、RocketMQ 调度和幂等消费。
 - Phase 3：白名单 Typed Tools、不可变 Evidence 元数据、持久化原始内容和哈希校验。
+- Phase 4：LangGraph 动态多 Agent、DeepSeek 结构化适配、Evidence 引用安全门和只读 RCA。
 
-## 下一阶段：Phase 4
+## 下一阶段：Phase 5
 
-Phase 4 只实现 LangGraph 多 Agent 只读 RCA。Redis、Qdrant、恢复执行和前端仍不得提前引入。
+Phase 5 只实现 Redis Checkpoint、上下文压缩和 Qdrant 记忆。恢复执行和前端仍不得提前引入。
+
+Phase 4 的图结构、安全门与验证结果分别保存在 `docs/phase-4-blueprint.md` 和 `docs/phase-4-validation.md`。
 
 Phase 3 的工具白名单、Evidence 契约、取舍与验证结果分别保存在 `docs/phase-3-blueprint.md` 和 `docs/phase-3-validation.md`。
 

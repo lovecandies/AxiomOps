@@ -20,6 +20,16 @@ from axiom_ops.control_plane.models import (
     IncidentCreate,
     IncidentView,
     MetricsToolInput,
+    RcaReportView,
+    RcaRunView,
+)
+from axiom_ops.control_plane.rca_model import DeepSeekRcaModel
+from axiom_ops.control_plane.rca_repository import RcaRepository
+from axiom_ops.control_plane.rca_runtime import (
+    RcaIncidentNotFound,
+    RcaReportNotFound,
+    RcaRunNotFound,
+    RcaRuntime,
 )
 from axiom_ops.control_plane.repository import IdempotencyConflict, IncidentRepository
 from axiom_ops.control_plane.typed_tools import (
@@ -33,6 +43,7 @@ def create_control_plane_app(
     repository: IncidentRepository | None = None,
     database: Database | None = None,
     evidence_service: EvidenceService | None = None,
+    rca_runtime: RcaRuntime | None = None,
 ) -> FastAPI:
     settings = ControlPlaneSettings()
     active_database = database or Database(settings)
@@ -43,7 +54,14 @@ def create_control_plane_app(
         MetricsSnapshotTool(settings),
         ServiceHealthTool(settings),
     )
-    application = FastAPI(title="AxiomOps Incident Control Plane", version="0.3.0")
+    active_rca_runtime = rca_runtime or RcaRuntime(
+        active_repository,
+        EvidenceRepository(active_database),
+        EvidenceStorage(settings.evidence_root),
+        RcaRepository(active_database),
+        lambda: DeepSeekRcaModel(settings),
+    )
+    application = FastAPI(title="AxiomOps Incident Control Plane", version="0.4.0")
 
     @application.get("/health")
     def health() -> dict[str, str]:
@@ -139,6 +157,33 @@ def create_control_plane_app(
             raise HTTPException(status_code=404, detail="evidence not found") from exc
         except EvidenceIntegrityError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @application.post(
+        "/incidents/{incident_id}/rca-runs",
+        response_model=RcaRunView,
+        status_code=201,
+    )
+    def start_rca_run(incident_id: str) -> RcaRunView:
+        try:
+            return active_rca_runtime.run(incident_id)
+        except RcaIncidentNotFound as exc:
+            raise HTTPException(status_code=404, detail="incident not found") from exc
+
+    @application.get("/rca-runs/{run_id}", response_model=RcaRunView)
+    def get_rca_run(run_id: str) -> RcaRunView:
+        try:
+            return active_rca_runtime.get_run(run_id)
+        except RcaRunNotFound as exc:
+            raise HTTPException(status_code=404, detail="RCA run not found") from exc
+
+    @application.get("/incidents/{incident_id}/rca", response_model=RcaReportView)
+    def get_latest_rca(incident_id: str) -> RcaReportView:
+        try:
+            return active_rca_runtime.get_latest_report(incident_id)
+        except RcaIncidentNotFound as exc:
+            raise HTTPException(status_code=404, detail="incident not found") from exc
+        except RcaReportNotFound as exc:
+            raise HTTPException(status_code=404, detail="verified RCA not found") from exc
 
     return application
 
