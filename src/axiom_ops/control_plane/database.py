@@ -46,5 +46,7 @@ class Database:
                 cursor.execute("SELECT 1 FROM evidence LIMIT 1")
                 cursor.execute("SELECT 1 FROM agent_runs LIMIT 1")
                 cursor.execute("SELECT 1 FROM agent_run_contexts LIMIT 1")
+                cursor.execute("SELECT 1 FROM recovery_approvals LIMIT 1")
+                cursor.execute("SELECT 1 FROM recovery_executions LIMIT 1")
         finally:
             connection.close()

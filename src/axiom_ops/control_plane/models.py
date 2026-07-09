@@ -225,3 +225,58 @@ class RcaReportView(BaseModel):
     limitations: list[str]
     verification: VerificationResult
     created_at: datetime
+
+
+class RecoveryAction(StrEnum):
+    RESET_INVENTORY_FAULT = "reset_inventory_fault"
+
+
+class RecoveryApprovalStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+
+
+class RecoveryExecutionStatus(StrEnum):
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    ROLLED_BACK = "ROLLED_BACK"
+
+
+class RecoveryRequest(BaseModel):
+    run_id: str = Field(min_length=1, max_length=36)
+    action: RecoveryAction
+    reason: str = Field(min_length=1, max_length=1000)
+
+
+class RecoveryDecisionRequest(BaseModel):
+    comment: str = Field(min_length=1, max_length=1000)
+
+
+class RecoveryApprovalView(BaseModel):
+    id: str
+    incident_id: str
+    run_id: str
+    action: RecoveryAction
+    status: RecoveryApprovalStatus
+    reason: str
+    requested_by: str
+    approved_by: str | None
+    approval_comment: str | None
+    requested_at: datetime
+    approved_at: datetime | None
+
+
+class RecoveryExecutionView(BaseModel):
+    id: str
+    approval_id: str
+    action: RecoveryAction
+    status: RecoveryExecutionStatus
+    executed_by: str
+    sandbox: bool
+    before_state: dict[str, Any]
+    action_result: dict[str, Any]
+    verification: dict[str, Any]
+    rollback: dict[str, Any] | None
+    error: str | None
+    started_at: datetime
+    completed_at: datetime

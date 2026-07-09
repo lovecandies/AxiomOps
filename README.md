@@ -2,7 +2,7 @@
 
 AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊断与安全恢复系统。
 
-当前已完成 **Phase 5：Redis Checkpoint、上下文压缩与 Qdrant 记忆**。系统已建立可重复故障实验、可靠 Incident 调度、不可变 Evidence、带独立验证的只读 RCA，以及可恢复执行和已验证历史案例召回。
+当前已完成 **Phase 7：OpenTelemetry/Prometheus、故障集与消融实验**。系统已建立可重复故障实验、可靠 Incident 调度、不可变 Evidence、带独立验证的只读 RCA、可恢复执行、已验证历史案例召回、审批后才能执行的安全恢复闭环，以及可量化的故障集评测报告。
 
 ## 当前能力
 
@@ -26,6 +26,12 @@ AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊�
 - Redis 持久化 LangGraph Checkpoint，失败 Run 使用同一 `run_id` 续跑。
 - 确定性 Evidence Capsule 执行上下文预算并保留 ID 与 SHA-256。
 - Qdrant 仅索引 Independent Verifier 批准的 RCA，历史提示不可作为 Evidence 引用。
+- Commander/Approver/Operator 三角色隔离，恢复动作必须人工审批后执行。
+- Sandbox 恢复动作 `reset_inventory_fault` 会记录恢复前状态、执行结果、验证结果和回滚结果。
+- 同一审批只生成一条恢复执行记录，重复执行返回同一审计结果。
+- 控制面暴露 Prometheus `/metrics`，记录 HTTP 请求、耗时和核心业务事件。
+- 控制面返回 `X-AxiomOps-Trace-Id` 与 W3C `traceparent`，支持跨 API 调用关联。
+- Phase 7 故障集评测输出 closed-loop pass rate、Prometheus evidence coverage、recovery verification rate 和 ablation 对比。
 - pytest 单元与契约测试。
 
 ## 本地运行
@@ -141,6 +147,41 @@ $env:DEEPSEEK_MODEL = "deepseek-v4-pro"
 ## 运行 Phase 5 恢复与记忆验证
 
 启动控制面后，验证脚本支持 `fail`、`resume`、`check-memory` 和 `reject` 四个动作。完整验证记录见 [Phase 5 验证记录](docs/phase-5-validation.md)。脚本使用明确标记的确定性评测模型与测试向量，不冒充 DeepSeek 或生产向量质量结果。
+
+## 运行 Phase 6 安全恢复验证
+
+同时启动 Phase 1 Lab 与控制面：
+
+```powershell
+.\scripts\start_lab.ps1
+.\scripts\start_control_plane.ps1
+.\.venv\Scripts\python.exe scripts\verify_phase6.py
+```
+
+该脚本会验证：角色权限、自审批拦截、审批后 sandbox 恢复、订单链路恢复、执行幂等。完整说明见 [Phase 6 蓝图](docs/phase-6-blueprint.md) 和 [Phase 6 验证记录](docs/phase-6-validation.md)。
+
+## 运行 Phase 7 可观测性与评测
+
+同时启动 Phase 1 Lab 与控制面：
+
+```powershell
+.\scripts\start_lab.ps1
+.\scripts\start_control_plane.ps1
+```
+
+检查控制面指标：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:18000/metrics
+```
+
+运行故障集与消融实验：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_phase7_evaluation.py
+```
+
+报告会保存到 `artifacts/evaluations/phase7-<timestamp>.json`。完整说明见 [Phase 7 蓝图](docs/phase-7-blueprint.md) 和 [Phase 7 验证记录](docs/phase-7-validation.md)。
 
 ## 最终技术栈
 
