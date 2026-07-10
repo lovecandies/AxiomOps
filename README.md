@@ -198,6 +198,6 @@ Invoke-RestMethod http://127.0.0.1:18000/metrics
 
 详细取舍见 [上游迁移清单](docs/upstream-audit.md)、[架构基线](docs/architecture.md) 和各阶段蓝图。
 
-Phase 1–5 最新完整性复审与黑盒记录见 [Phase 1–5 完整性审计](docs/phase-1-5-audit.md)。
+Phase 1–5 完整性复审与黑盒记录见 [Phase 1–5 完整性审计](docs/phase-1-5-audit.md)，Phase 6 和 Phase 7 的最新安全恢复、可观测性与评测记录分别见 [Phase 6 验证记录](docs/phase-6-validation.md) 和 [Phase 7 验证记录](docs/phase-7-validation.md)。
 
-如果需要从头理解项目的开发步骤、设计思路、业务时序、数据模型和验证方法，阅读 [AxiomOps 从零到 Phase 5：完整技术实现详解](docs/AxiomOps-Phase0-5-完整技术详解.md)。
+如果需要从头理解项目的开发步骤、设计思路、业务时序、数据模型和验证方法，阅读 [AxiomOps 从零到 Phase 7：完整技术实现详解](docs/AxiomOps-Phase0-7-完整技术详解.md)。

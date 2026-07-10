@@ -42,6 +42,47 @@
 }
 ```
 
+## 2026-07-09 实际黑盒验证结果
+
+Docker Desktop 启动后，已重新启动 Phase 1 Lab 与控制面并执行：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_phase6.py
+```
+
+实际输出：
+
+```json
+{
+  "passed": true,
+  "incident_id": "b8621e95-dcef-4cde-ae3c-f61c440ce719",
+  "run_id": "55d32f75-86f9-4835-b042-14c5e9b53d38",
+  "approval_id": "e1dec54a-311e-47ac-849a-43be7f3e7df7",
+  "execution_id": "703a361e-18f7-4c0f-b6a2-5c29faed7a3a",
+  "execution_status": "SUCCEEDED",
+  "self_approval_status": 403,
+  "before_state": {
+    "mode": "unavailable",
+    "delay_ms": 0,
+    "error_rate": 0.0,
+    "request_count": 0
+  },
+  "verification": {
+    "passed": true,
+    "order_flow_status": 200,
+    "inventory_health_status": 200
+  },
+  "idempotent_execute": true
+}
+```
+
+结论：
+
+- 自审批被 `403` 拦截。
+- Sandbox 恢复执行成功。
+- 恢复后库存健康检查和订单链路均返回 `200`。
+- 同一审批重复执行返回同一执行记录，幂等语义成立。
+
 ## 单元验证
 
 ```powershell
