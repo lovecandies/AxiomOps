@@ -1,6 +1,9 @@
-from collections.abc import Callable
+import asyncio
+import json
+from collections.abc import AsyncIterator, Callable
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST
 from qdrant_client import QdrantClient
 
@@ -19,10 +22,12 @@ from axiom_ops.control_plane.evidence_storage import (
 )
 from axiom_ops.control_plane.models import (
     EvidenceView,
+    FaultStateToolInput,
     HealthToolInput,
     IncidentCreate,
     IncidentView,
     MetricsToolInput,
+    OrderFlowProbeInput,
     RecoveryApprovalView,
     RecoveryDecisionRequest,
     RecoveryExecutionView,
@@ -55,9 +60,12 @@ from axiom_ops.control_plane.recovery_service import (
 from axiom_ops.control_plane.repository import IdempotencyConflict, IncidentRepository
 from axiom_ops.control_plane.typed_tools import (
     MetricsSnapshotTool,
+    InventoryFaultStateTool,
+    OrderFlowProbeTool,
     ServiceHealthTool,
     ToolExecutionError,
 )
+from starlette.responses import StreamingResponse
 
 
 def create_control_plane_app(
@@ -75,6 +83,8 @@ def create_control_plane_app(
         EvidenceStorage(settings.evidence_root),
         MetricsSnapshotTool(settings),
         ServiceHealthTool(settings),
+        InventoryFaultStateTool(settings),
+        OrderFlowProbeTool(settings),
     )
     active_rca_runtime = rca_runtime or RcaRuntime(
         active_repository,
@@ -103,6 +113,12 @@ def create_control_plane_app(
     )
     observability = ControlPlaneObservability()
     application = FastAPI(title="AxiomOps Incident Control Plane", version="0.5.0")
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @application.middleware("http")
     async def observe_request(request: Request, call_next) -> Response:
@@ -162,6 +178,32 @@ def create_control_plane_app(
             raise HTTPException(status_code=404, detail="incident not found")
         return incident
 
+    @application.get("/incidents", response_model=list[IncidentView])
+    def list_incidents() -> list[IncidentView]:
+        return active_repository.list_incidents()
+
+    @application.get("/incidents/{incident_id}/events")
+    async def incident_events(incident_id: str) -> StreamingResponse:
+        if active_repository.get_incident(incident_id) is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+
+        async def stream() -> AsyncIterator[str]:
+            previous = ""
+            while True:
+                incident = active_repository.get_incident(incident_id)
+                if incident is None:
+                    return
+                payload = incident.model_dump(mode="json")
+                encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+                if encoded != previous:
+                    previous = encoded
+                    yield f"event: incident\\ndata: {encoded}\\n\\n"
+                else:
+                    yield "event: heartbeat\\ndata: {}\\n\\n"
+                await asyncio.sleep(1)
+
+        return StreamingResponse(stream(), media_type="text/event-stream")
+
     def execute_tool(action: Callable[[], EvidenceView]) -> EvidenceView:
         try:
             return action()
@@ -211,6 +253,30 @@ def create_control_plane_app(
     ) -> EvidenceView:
         return execute_tool(
             lambda: active_evidence_service.execute_health(incident_id, tool_input)
+        )
+
+    @application.post(
+        "/incidents/{incident_id}/tools/fault-state",
+        response_model=EvidenceView,
+        status_code=201,
+    )
+    def execute_fault_state(
+        incident_id: str, tool_input: FaultStateToolInput
+    ) -> EvidenceView:
+        return execute_tool(
+            lambda: active_evidence_service.execute_fault_state(incident_id, tool_input)
+        )
+
+    @application.post(
+        "/incidents/{incident_id}/tools/order-flow",
+        response_model=EvidenceView,
+        status_code=201,
+    )
+    def execute_order_flow(
+        incident_id: str, tool_input: OrderFlowProbeInput
+    ) -> EvidenceView:
+        return execute_tool(
+            lambda: active_evidence_service.execute_order_flow(incident_id, tool_input)
         )
 
     @application.get(

@@ -19,7 +19,9 @@ from axiom_ops.control_plane.rca_model import RcaModel
 GRAPH_VERSION = "phase5-v1"
 
 ROLE_EVIDENCE_KINDS = {
-    InvestigatorRole.METRICS: {"METRIC_SNAPSHOT", "SERVICE_HEALTH"},
+    InvestigatorRole.METRICS: {
+        "METRIC_SNAPSHOT", "SERVICE_HEALTH", "FAULT_STATE", "ORDER_FLOW_PROBE"
+    },
     InvestigatorRole.LOGS_TRACE: {"LOG_SNAPSHOT", "TRACE_SNAPSHOT"},
     InvestigatorRole.CHANGE: {"CHANGE_EVENT"},
 }

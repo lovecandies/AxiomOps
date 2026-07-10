@@ -5,11 +5,18 @@ from axiom_ops.control_plane.evidence_repository import EvidenceRepository
 from axiom_ops.control_plane.evidence_storage import EvidenceStorage
 from axiom_ops.control_plane.models import (
     EvidenceView,
+    FaultStateToolInput,
     HealthToolInput,
     MetricsToolInput,
+    OrderFlowProbeInput,
     ToolObservation,
 )
-from axiom_ops.control_plane.typed_tools import MetricsSnapshotTool, ServiceHealthTool
+from axiom_ops.control_plane.typed_tools import (
+    InventoryFaultStateTool,
+    MetricsSnapshotTool,
+    OrderFlowProbeTool,
+    ServiceHealthTool,
+)
 
 
 class EvidenceNotFound(Exception):
@@ -27,11 +34,15 @@ class EvidenceService:
         storage: EvidenceStorage,
         metrics_tool: MetricsSnapshotTool,
         health_tool: ServiceHealthTool,
+        fault_state_tool: InventoryFaultStateTool | None = None,
+        order_flow_tool: OrderFlowProbeTool | None = None,
     ) -> None:
         self.repository = repository
         self.storage = storage
         self.metrics_tool = metrics_tool
         self.health_tool = health_tool
+        self.fault_state_tool = fault_state_tool
+        self.order_flow_tool = order_flow_tool
 
     def _ensure_incident(self, incident_id: str) -> None:
         if not self.repository.incident_exists(incident_id):
@@ -73,6 +84,22 @@ class EvidenceService:
         self._ensure_incident(incident_id)
         observation = self.health_tool.execute(tool_input)
         return self._persist(incident_id, observation)
+
+    def execute_fault_state(
+        self, incident_id: str, tool_input: FaultStateToolInput
+    ) -> EvidenceView:
+        self._ensure_incident(incident_id)
+        if self.fault_state_tool is None:
+            raise RuntimeError("fault-state tool is not configured")
+        return self._persist(incident_id, self.fault_state_tool.execute(tool_input))
+
+    def execute_order_flow(
+        self, incident_id: str, tool_input: OrderFlowProbeInput
+    ) -> EvidenceView:
+        self._ensure_incident(incident_id)
+        if self.order_flow_tool is None:
+            raise RuntimeError("order-flow tool is not configured")
+        return self._persist(incident_id, self.order_flow_tool.execute(tool_input))
 
     def list_for_incident(self, incident_id: str) -> list[EvidenceView]:
         self._ensure_incident(incident_id)

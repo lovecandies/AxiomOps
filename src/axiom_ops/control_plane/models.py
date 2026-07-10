@@ -79,9 +79,19 @@ class HealthToolInput(BaseModel):
     service: LabService
 
 
+class FaultStateToolInput(BaseModel):
+    """No caller-controlled target: only the inventory Lab fault state is readable."""
+
+
+class OrderFlowProbeInput(BaseModel):
+    """No caller-controlled target: only the fixed Lab order probe is readable."""
+
+
 class EvidenceKind(StrEnum):
     METRIC_SNAPSHOT = "METRIC_SNAPSHOT"
     SERVICE_HEALTH = "SERVICE_HEALTH"
+    FAULT_STATE = "FAULT_STATE"
+    ORDER_FLOW_PROBE = "ORDER_FLOW_PROBE"
 
 
 class EvidenceView(BaseModel):

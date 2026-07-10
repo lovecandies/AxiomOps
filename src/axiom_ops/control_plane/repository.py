@@ -157,6 +157,22 @@ class IncidentRepository:
         finally:
             connection.close()
 
+    def list_incidents(self, limit: int = 50) -> list[IncidentView]:
+        connection = self.database.connect()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id FROM incidents ORDER BY created_at DESC LIMIT %s", (limit,)
+                )
+                incident_ids = [row["id"] for row in cursor.fetchall()]
+            return [
+                incident
+                for incident_id in incident_ids
+                if (incident := self.get_incident(incident_id)) is not None
+            ]
+        finally:
+            connection.close()
+
     def claim_outbox(
         self,
         worker_id: str,

@@ -1,0 +1,31 @@
+.workspace .toolbar {
+  display: grid;
+  grid-template-columns: minmax(330px, 1fr) minmax(300px, 1fr) minmax(220px, auto);
+  grid-template-areas:
+    "incident fault create"
+    "trace helper .";
+  align-items: start;
+  column-gap: 18px;
+  row-gap: 8px;
+}
+
+.workspace .toolbar label { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.workspace .toolbar label > span { flex: 0 0 auto; white-space: nowrap; }
+.workspace .toolbar label select { flex: 1 1 auto; min-width: 0; }
+.incident-picker { grid-area: incident; }
+.fault-picker { grid-area: fault; }
+.fault-picker { flex-wrap: wrap; }
+.fault-help { flex: 0 0 calc(100% - 92px); margin: 0 0 0 92px; color: #806e61; font-weight: 400; line-height: 1.35; }
+.create-incident { grid-area: create; min-width: 206px; min-height: 52px; justify-content: center; white-space: nowrap; align-self: start; }
+.workspace .trace { grid-area: trace; max-width: 100%; align-self: start; padding-top: 2px; }
+.fault-description { margin-top: 14px; padding: 13px 15px; border-radius: 14px; background: #f0e7da; color: #5f493a; }
+.fault-description strong { color: #9b543b; }
+.fault-description p { margin: 4px 0; }
+.fault-description small { color: #79675a; }
+
+@media (max-width: 720px) {
+  .workspace .toolbar { grid-template-columns: 1fr; grid-template-areas: "incident" "fault" "helper" "create" "trace"; }
+  .workspace .toolbar label { display: grid; gap: 7px; }
+  .fault-help { margin-left: 0; }
+  .create-incident { width: 100%; }
+}

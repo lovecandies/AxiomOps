@@ -65,6 +65,9 @@ class MemoryRepository:
             None,
         )
 
+    def list_incidents(self) -> list[IncidentView]:
+        return list(self.incidents.values())
+
 
 def payload(summary: str = "latency threshold exceeded") -> dict[str, str]:
     return {
@@ -122,6 +125,20 @@ def test_incident_can_be_read_and_missing_incident_is_404() -> None:
     assert found.status_code == 200
     assert found.json()["status"] == "RECEIVED"
     assert missing.status_code == 404
+
+
+def test_incidents_can_be_listed_for_console() -> None:
+    client = TestClient(create_control_plane_app(MemoryRepository(), ReadyDatabase()))
+    client.post(
+        "/incidents",
+        headers={"Idempotency-Key": "alert-20260708-004"},
+        json=payload(),
+    )
+
+    response = client.get("/incidents")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 
 
 def test_typed_tool_rejects_values_outside_allowlist() -> None:

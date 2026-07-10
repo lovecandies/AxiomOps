@@ -69,7 +69,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        for migration in /migrations/002_evidence.sql /migrations/003_rca.sql /migrations/004_phase5.sql /migrations/005_phase6.sql; do
+        for migration in /migrations/002_evidence.sql /migrations/003_rca.sql /migrations/004_phase5.sql /migrations/005_phase6.sql /migrations/006_phase8_evidence_kinds.sql; do
           mysql -h mysql -u root axiomops < $$migration || exit 1;
         done
 

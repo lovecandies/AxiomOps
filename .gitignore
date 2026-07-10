@@ -10,3 +10,5 @@ dist/
 build/
 *.egg-info/
 artifacts/
+node_modules/
+*.tsbuildinfo
