@@ -170,7 +170,7 @@ def fail() -> None:
     run = runtime(FailAtSynthesisModel, settings, database, repository, memory).run(
         incident_with_evidence(database)
     )
-    if run.status != RcaRunStatus.FAILED or run.context is None:
+    if str(run.status) != RcaRunStatus.FAILED.value or run.context is None:
         raise RuntimeError(f"expected checkpointed FAILED run, got {run.status}")
     print(json.dumps({"run_id": run.id, "status": run.status.value, "model_calls": run.model_calls}))
 
@@ -178,7 +178,7 @@ def fail() -> None:
 def resume(run_id: str) -> None:
     settings, database, repository, memory = dependencies()
     run = runtime(ResumeModel, settings, database, repository, memory).resume(run_id)
-    if run.status != RcaRunStatus.COMPLETED:
+    if str(run.status) != RcaRunStatus.COMPLETED.value:
         raise RuntimeError(f"resume failed: {run.error}")
     node_counts = {
         name: sum(step.node_name == name for step in run.steps)
@@ -227,7 +227,7 @@ def reject() -> None:
         incident_with_evidence(database)
     )
     after = memory.client.count(memory.collection, exact=True).count
-    if run.status != RcaRunStatus.REJECTED or after != before:
+    if str(run.status) != RcaRunStatus.REJECTED.value or after != before:
         raise RuntimeError(
             f"rejected run changed memory index: status={run.status}, {before}->{after}"
         )

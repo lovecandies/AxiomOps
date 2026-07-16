@@ -175,7 +175,7 @@ export function App() {
 }
 
 function guideText(step: number, report?: Report, approval?: Approval, execution?: Execution) {
-  if (execution) return execution.status === "SUCCEEDED" ? "闭环已完成：请向面试官展示恢复验证结果与 Trace ID。" : "恢复未成功：请检查执行记录中的验证与回滚信息。";
+  if (execution) return execution.status === "SUCCEEDED" ? "闭环已完成：请查看恢复验证结果与 Trace ID。" : "恢复未成功：请检查执行记录中的验证与回滚信息。";
   if (approval?.status === "APPROVED") return "审批已通过：现在由 Operator 执行受限的 Sandbox 恢复。";
   if (approval) return "恢复请求已创建：请使用独立 Approver 身份完成审批。";
   if (report) return "RCA 已核验：请由 Commander 发起恢复请求，进入人工审批门禁。";

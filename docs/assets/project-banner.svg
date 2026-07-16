@@ -1,0 +1,20 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AxiomOps banner</title>
+  <desc id="desc">A warm technical banner showing evidence, agents, verification, and recovery flow.</desc>
+  <rect width="1200" height="360" rx="32" fill="#F5EFE6"/>
+  <rect x="36" y="36" width="1128" height="288" rx="28" fill="#2F3A35"/>
+  <circle cx="156" cy="180" r="58" fill="#D7A45F"/>
+  <circle cx="156" cy="180" r="30" fill="#F5EFE6"/>
+  <path d="M214 180H344" stroke="#D7A45F" stroke-width="10" stroke-linecap="round"/>
+  <rect x="344" y="112" width="172" height="136" rx="22" fill="#F5EFE6"/>
+  <path d="M380 151H480M380 181H456M380 211H468" stroke="#2F3A35" stroke-width="10" stroke-linecap="round"/>
+  <path d="M516 180H646" stroke="#D7A45F" stroke-width="10" stroke-linecap="round"/>
+  <rect x="646" y="96" width="188" height="168" rx="28" fill="#B85F45"/>
+  <path d="M700 180C700 154.6 717.6 135 740 135C762.4 135 780 154.6 780 180C780 205.4 762.4 225 740 225C717.6 225 700 205.4 700 180Z" fill="#F5EFE6"/>
+  <path d="M740 135V225M700 180H780" stroke="#B85F45" stroke-width="8" stroke-linecap="round"/>
+  <path d="M834 180H964" stroke="#D7A45F" stroke-width="10" stroke-linecap="round"/>
+  <path d="M1020 122L1085 160V235L1020 273L955 235V160L1020 122Z" fill="#F5EFE6"/>
+  <path d="M988 188L1012 212L1054 166" stroke="#2F3A35" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="96" y="78" fill="#F5EFE6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">AxiomOps</text>
+  <text x="96" y="306" fill="#D7A45F" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="600">Evidence -> Multi-Agent RCA -> Verified Recovery</text>
+</svg>
