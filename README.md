@@ -5,14 +5,14 @@
 <h1 align="center">AxiomOps</h1>
 
 <p align="center">
-  Evidence-driven multi-agent AIOps incident diagnosis and safe recovery.
+  证据驱动的多 Agent 智能故障诊断与安全恢复系统。
 </p>
 
 <p align="center">
-  <a href="docs/architecture.md">Architecture</a> ·
-  <a href="docs/deployment.md">Deployment</a> ·
-  <a href="docs/api.md">API</a> ·
-  <a href="docs/benchmarks.md">Benchmarks</a>
+  <a href="docs/architecture.md">架构设计</a> ·
+  <a href="docs/deployment.md">部署指南</a> ·
+  <a href="docs/api.md">API 文档</a> ·
+  <a href="docs/benchmarks.md">Benchmark</a>
 </p>
 
 <p align="center">
@@ -23,129 +23,129 @@
   <img alt="License" src="https://img.shields.io/badge/License-MIT-8b6f47">
 </p>
 
-## What Is AxiomOps
+## 项目定位
 
-AxiomOps is a reproducible AIOps lab and control plane for microservice incidents. It turns an alert into typed evidence, runs a bounded multi-agent RCA workflow, verifies every cited claim, and executes recovery only after deterministic approval gates.
+AxiomOps 是一个面向微服务故障场景的可复现实验环境与 Incident 控制面。它将告警转化为类型化 Evidence，通过受控的多 Agent RCA 工作流完成诊断，并在独立验证、人工审批和后端策略门禁之后执行安全恢复。
 
-The project is intentionally built around a hard rule: agents may reason and recommend, but recovery is owned by auditable backend workflows.
+项目的核心边界很明确：Agent 负责读取证据、推理和生成结构化结论；恢复动作由可审计、可幂等、可回滚的后端流程执行。
 
-## Why It Exists
+## 背景与痛点
 
-LLM-based operations tools often fail in three places:
+把大模型直接接入运维系统时，常见问题不是“能不能回答”，而是回答是否可证明、动作是否可审计、结果是否可复现：
 
-- They diagnose from loose chat context instead of durable evidence.
-- They mix reasoning with execution, making recovery difficult to audit.
-- They report impressive results without a repeatable fault set or baseline.
+- 诊断依赖松散上下文，缺少可追溯 Evidence。
+- 推理和执行混在一起，恢复动作难以审计和回滚。
+- 缺少固定故障集与基线对照，效果指标不可复现。
 
-AxiomOps addresses those gaps with ground-truth fault injection, immutable evidence, LangGraph orchestration, role-separated approval, and saved benchmark reports.
+AxiomOps 通过 Ground Truth 故障注入、不可变 Evidence、LangGraph 多 Agent 编排、角色隔离审批和保存的 Benchmark 报告，把一次故障处置拆成可验证的工程闭环。
 
-## Core Capabilities
+## 核心能力
 
-| Area | Capability |
+| 模块 | 能力 |
 | --- | --- |
-| Fault lab | Reproducible Order -> Inventory scenarios for latency, error rate, and dependency outage |
-| Incident control | MySQL-backed Incident state, audit events, and transactional Outbox dispatch |
-| Typed tools | Prometheus metrics, service health, injected fault state, and order-flow probe |
-| Evidence | Raw JSON persisted with metadata and SHA-256 integrity checks |
-| Agent runtime | Commander, investigator agents, RCA synthesizer, and independent verifier |
-| Memory | Redis checkpoint/resume and Qdrant index for approved historical RCA |
-| Safe recovery | Commander/Approver/Operator role split with sandbox execution and verification |
-| Observability | Prometheus metrics, trace headers, SSE console updates, and evaluation reports |
+| 故障实验环境 | 提供 Order -> Inventory 微服务链路，支持延迟、错误率、依赖不可用三类故障注入 |
+| Incident 控制面 | 基于 MySQL 管理 Incident 状态、审计事件和 Transactional Outbox |
+| Typed Tools | 采集 Prometheus 指标、服务健康、故障注入状态和订单链路探测 |
+| 不可变 Evidence | 原始 JSON 落盘，MySQL 保存元数据和 SHA-256 完整性校验 |
+| 多 Agent RCA | Commander、Investigator、RCA Synthesizer、Independent Verifier 分工协作 |
+| 上下文与记忆 | Redis Checkpoint 支持恢复，Qdrant 索引已验证历史 RCA |
+| 安全恢复 | Commander / Approver / Operator 角色隔离，审批后执行 Sandbox 恢复并验证 |
+| 可观测与评测 | Prometheus 指标、Trace Header、SSE 时间线和可复现实验报告 |
 
-## Tech Stack
+## 技术栈
 
-| Layer | Tools |
+| 层级 | 技术 |
 | --- | --- |
-| Agent runtime | Python, FastAPI, LangGraph, DeepSeek-compatible chat endpoint |
-| Control plane | MySQL, Redis, RocketMQ, Qdrant |
-| Observability | Prometheus, W3C trace headers, structured audit records |
-| Lab | Docker Compose, FastAPI microservices, scripted fault injection |
-| Console | React, TypeScript, SSE, Lucide Icons |
-| Validation | pytest, scenario runners, benchmark scripts |
+| Agent Runtime | Python、FastAPI、LangGraph、DeepSeek 兼容 Chat Endpoint |
+| 控制面基础设施 | MySQL、Redis、RocketMQ、Qdrant |
+| 可观测性 | Prometheus、W3C Trace Header、结构化审计记录 |
+| 故障实验 | Docker Compose、FastAPI 微服务、脚本化故障注入 |
+| 前端控制台 | React、TypeScript、SSE、Lucide Icons |
+| 验证体系 | pytest、场景 Runner、Benchmark 脚本 |
 
-## Architecture
+## 架构图
 
 ```mermaid
 flowchart LR
-    Alert["Fault lab / alert"] --> CP["FastAPI control plane"]
-    CP --> DB["MySQL final facts"]
-    CP --> Evidence["Immutable evidence store"]
-    CP --> Tools["Typed tools"]
+    Alert["故障实验 / 告警"] --> CP["FastAPI 控制面"]
+    CP --> DB["MySQL 最终事实源"]
+    CP --> Evidence["不可变 Evidence 存储"]
+    CP --> Tools["Typed Tools"]
     Tools --> Prom["Prometheus"]
-    Tools --> Lab["Order / Inventory lab"]
+    Tools --> Lab["Order / Inventory Lab"]
     DB --> Outbox["Transactional Outbox"]
     Outbox --> MQ["RocketMQ"]
-    MQ --> Runtime["LangGraph RCA runtime"]
+    MQ --> Runtime["LangGraph RCA Runtime"]
     Runtime --> Agents["Commander + Investigators + Synthesizer"]
-    Agents --> Verifier["Independent verifier"]
+    Agents --> Verifier["Independent Verifier"]
     Verifier --> RCA["Verified RCA"]
-    RCA --> Approval["Human approval gate"]
-    Approval --> Recovery["Sandbox recovery"]
-    Recovery --> Check["Health + order-flow verification"]
-    Runtime --> Redis["Redis checkpoint"]
-    Runtime --> Qdrant["Qdrant approved memory"]
+    RCA --> Approval["人工审批门禁"]
+    Approval --> Recovery["Sandbox 恢复"]
+    Recovery --> Check["健康检查 + 订单链路验证"]
+    Runtime --> Redis["Redis Checkpoint"]
+    Runtime --> Qdrant["Qdrant Verified Memory"]
 ```
 
-## End-to-End Flow
+## 全流程链路
 
-1. Inject a known fault into the local Inventory service.
-2. Create an Incident in the control plane.
-3. Collect typed evidence from metrics, health checks, fault state, and order flow.
-4. Run the LangGraph multi-agent RCA workflow.
-5. Reject unsupported claims through the independent verifier.
-6. Request and approve a bounded recovery action.
-7. Execute sandbox recovery and verify both service health and business flow.
-8. Persist metrics, traces, audit events, and benchmark artifacts.
+1. 在本地 Inventory 服务注入已知故障。
+2. 在控制面创建 Incident。
+3. 通过 Typed Tools 采集指标、健康状态、故障状态和订单链路 Evidence。
+4. 启动 LangGraph 多 Agent RCA 工作流。
+5. 由 Independent Verifier 拒绝缺少 Evidence 支撑的结论。
+6. Commander 发起恢复请求，Approver 完成人工审批。
+7. Operator 执行受限 Sandbox 恢复动作。
+8. 同时验证服务健康与业务链路，并保存审计事件、指标和实验报告。
 
-## Benchmark Snapshot
+## Benchmark 摘要
 
-The current benchmark suite uses 3 ground-truth scenarios with 3 repeated runs each.
+当前评测使用 3 个 Ground Truth 故障场景，每个场景重复 3 次。
 
-| Metric | Result |
+| 指标 | 结果 |
 | --- | --- |
-| Closed-loop deterministic scenarios | 3 / 3 passed |
-| Prometheus evidence coverage | 100% |
-| Recovery verification rate | 100% |
-| Multi-agent root-cause match | 9 / 9 |
-| Single-agent root-cause match | 9 / 9 |
-| Multi-agent strict evidence citation coverage | 8 / 9 |
-| Single-agent strict evidence citation coverage | 0 / 9 |
-| Multi-agent mean latency | 20.28s |
-| Single-agent mean latency | 3.06s |
+| 确定性故障闭环 | 3 / 3 通过 |
+| Prometheus Evidence 覆盖率 | 100% |
+| 恢复验证通过率 | 100% |
+| 多 Agent 根因命中 | 9 / 9 |
+| 单 Agent 根因命中 | 9 / 9 |
+| 多 Agent 严格 Evidence 引用覆盖 | 8 / 9 |
+| 单 Agent 严格 Evidence 引用覆盖 | 0 / 9 |
+| 多 Agent 平均延迟 | 20.28s |
+| 单 Agent 平均延迟 | 3.06s |
 
-The useful tradeoff is not inflated accuracy on the small deterministic dataset. The multi-agent path improves evidence discipline and independent verification at higher runtime cost, so it is best suited for higher-risk incidents.
+这个结果没有夸大为“准确率提升”。在当前小规模确定性故障集上，单 Agent 和多 Agent 都能命中根因；多 Agent 的价值主要体现在 Evidence 约束、职责隔离和独立验证，代价是更高的延迟与模型调用成本。因此完整多 Agent 链路更适合高风险、强审计要求的 Incident。
 
-More detail: [docs/benchmarks.md](docs/benchmarks.md).
+详细说明见 [docs/benchmarks.md](docs/benchmarks.md)。
 
-## Quick Start
+## 快速启动
 
-Prerequisites:
+前置环境：
 
 - Python 3.11+
 - Docker Desktop
 - Node.js 20+
 
-Install Python dependencies:
+安装 Python 依赖：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-Start the local lab and control plane:
+启动本地故障实验环境和控制面：
 
 ```powershell
 .\scripts\start_lab.ps1
 .\scripts\start_control_plane.ps1
 ```
 
-Run backend tests:
+运行后端测试：
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Start the console:
+启动前端控制台：
 
 ```powershell
 cd frontend
@@ -153,36 +153,36 @@ npm install
 npm run dev
 ```
 
-Open the console printed by Vite, then create an incident and follow the guided workflow.
+打开 Vite 输出的本地地址，创建 Incident，并按页面指引完成证据采集、RCA、审批和恢复验证。
 
-## Repository Layout
+## 仓库结构
 
 ```text
 src/axiom_ops/              Python package
-src/axiom_ops/control_plane Incident, evidence, RCA, recovery, and observability
-src/axiom_ops/lab           Fault-injection microservice lab
-frontend/                   React operations console
-ops-control-plane/          Docker Compose and MySQL migrations
-ops-lab/                    Docker Compose lab services and Prometheus config
-scripts/                    Local run and verification scripts
-tests/                      Unit and contract tests
-docs/                       Public documentation
+src/axiom_ops/control_plane Incident、Evidence、RCA、Recovery、Observability
+src/axiom_ops/lab           故障注入微服务实验环境
+frontend/                   React 运维控制台
+ops-control-plane/          Docker Compose 与 MySQL 迁移脚本
+ops-lab/                    实验服务、Prometheus 配置与故障场景
+scripts/                    本地启动、验证和评测脚本
+tests/                      单元测试与契约测试
+docs/                       公开项目文档
 ```
 
-## Documentation
+## 文档索引
 
-- [Documentation index](docs/README.md)
-- [Architecture](docs/architecture.md)
-- [Deployment](docs/deployment.md)
-- [API](docs/api.md)
-- [Benchmarks](docs/benchmarks.md)
+- [文档总览](docs/README.md)
+- [架构设计](docs/architecture.md)
+- [部署指南](docs/deployment.md)
+- [API 文档](docs/api.md)
+- [Benchmark](docs/benchmarks.md)
 
-## Security Notes
+## 安全说明
 
-- Do not commit local credentials or runtime artifacts.
-- Agents are read-only for diagnosis; recovery is handled by backend policy and role gates.
-- Evidence and RCA records are persisted with immutable metadata and integrity checks.
-- The default recovery action is scoped to the local sandbox lab.
+- 不要提交本地凭据、运行产物或实验日志。
+- Agent 只负责诊断推理，恢复动作由后端策略和角色门禁执行。
+- Evidence 与 RCA 持久化保存，并带完整性校验。
+- 默认恢复动作只作用于本地 Sandbox 实验环境。
 
 ## License
 
