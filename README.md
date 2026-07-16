@@ -1,124 +1,189 @@
-# AxiomOps
+<p align="center">
+  <img src="docs/assets/project-banner.svg" alt="AxiomOps banner" width="100%" />
+</p>
 
-AxiomOps 是一个面向微服务故障场景的证据驱动多 Agent 智能诊断与安全恢复系统。
+<h1 align="center">AxiomOps</h1>
 
-当前已完成 **Phase 3：Typed Tools 与不可变 Evidence**。系统还没有接入 LLM；现阶段已建立可重复故障实验、可靠 Incident 调度，以及可校验的外部事实采集链路。
+<p align="center">
+  Evidence-driven multi-agent AIOps incident diagnosis and safe recovery.
+</p>
 
-## 当前能力
+<p align="center">
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/deployment.md">Deployment</a> ·
+  <a href="docs/api.md">API</a> ·
+  <a href="docs/benchmarks.md">Benchmarks</a>
+</p>
 
-- `GET /health`：进程存活检查。
-- `GET /ready`：当前阶段就绪检查。
-- 环境变量配置加载。
-- `order-service -> inventory-service` 可观测调用链。
-- 延迟、确定性 5xx、依赖不可用三类故障注入与恢复。
-- Prometheus 指标采集与场景指标差值验证。
-- Ground Truth、请求、指标、结果四类实验产物。
-- Incident 创建、查询和请求幂等冲突检测。
-- MySQL 同一事务写入 Incident、审计事件与 Outbox。
-- Outbox 租约、失败重试、RocketMQ 5 gRPC 投递与幂等消费。
-- RocketMQ 暂停期间可靠落库，恢复后自动补发。
-- Prometheus Metrics 与服务 Health 两个只读 Typed Tool。
-- Evidence 原始内容写入持久化文件卷，MySQL 保存元数据与 SHA-256。
-- 数据库 Trigger 拒绝 Evidence 更新/删除，读取时检测文件篡改。
-- pytest 单元与契约测试。
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3b6f85">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-control_plane-5a8f7b">
+  <img alt="LangGraph" src="https://img.shields.io/badge/LangGraph-multi_agent-b66a4a">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker_Compose-local_lab-6f6a5f">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-8b6f47">
+</p>
 
-## 本地运行
+## What Is AxiomOps
+
+AxiomOps is a reproducible AIOps lab and control plane for microservice incidents. It turns an alert into typed evidence, runs a bounded multi-agent RCA workflow, verifies every cited claim, and executes recovery only after deterministic approval gates.
+
+The project is intentionally built around a hard rule: agents may reason and recommend, but recovery is owned by auditable backend workflows.
+
+## Why It Exists
+
+LLM-based operations tools often fail in three places:
+
+- They diagnose from loose chat context instead of durable evidence.
+- They mix reasoning with execution, making recovery difficult to audit.
+- They report impressive results without a repeatable fault set or baseline.
+
+AxiomOps addresses those gaps with ground-truth fault injection, immutable evidence, LangGraph orchestration, role-separated approval, and saved benchmark reports.
+
+## Core Capabilities
+
+| Area | Capability |
+| --- | --- |
+| Fault lab | Reproducible Order -> Inventory scenarios for latency, error rate, and dependency outage |
+| Incident control | MySQL-backed Incident state, audit events, and transactional Outbox dispatch |
+| Typed tools | Prometheus metrics, service health, injected fault state, and order-flow probe |
+| Evidence | Raw JSON persisted with metadata and SHA-256 integrity checks |
+| Agent runtime | Commander, investigator agents, RCA synthesizer, and independent verifier |
+| Memory | Redis checkpoint/resume and Qdrant index for approved historical RCA |
+| Safe recovery | Commander/Approver/Operator role split with sandbox execution and verification |
+| Observability | Prometheus metrics, trace headers, SSE console updates, and evaluation reports |
+
+## Tech Stack
+
+| Layer | Tools |
+| --- | --- |
+| Agent runtime | Python, FastAPI, LangGraph, DeepSeek-compatible chat endpoint |
+| Control plane | MySQL, Redis, RocketMQ, Qdrant |
+| Observability | Prometheus, W3C trace headers, structured audit records |
+| Lab | Docker Compose, FastAPI microservices, scripted fault injection |
+| Console | React, TypeScript, SSE, Lucide Icons |
+| Validation | pytest, scenario runners, benchmark scripts |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Alert["Fault lab / alert"] --> CP["FastAPI control plane"]
+    CP --> DB["MySQL final facts"]
+    CP --> Evidence["Immutable evidence store"]
+    CP --> Tools["Typed tools"]
+    Tools --> Prom["Prometheus"]
+    Tools --> Lab["Order / Inventory lab"]
+    DB --> Outbox["Transactional Outbox"]
+    Outbox --> MQ["RocketMQ"]
+    MQ --> Runtime["LangGraph RCA runtime"]
+    Runtime --> Agents["Commander + Investigators + Synthesizer"]
+    Agents --> Verifier["Independent verifier"]
+    Verifier --> RCA["Verified RCA"]
+    RCA --> Approval["Human approval gate"]
+    Approval --> Recovery["Sandbox recovery"]
+    Recovery --> Check["Health + order-flow verification"]
+    Runtime --> Redis["Redis checkpoint"]
+    Runtime --> Qdrant["Qdrant approved memory"]
+```
+
+## End-to-End Flow
+
+1. Inject a known fault into the local Inventory service.
+2. Create an Incident in the control plane.
+3. Collect typed evidence from metrics, health checks, fault state, and order flow.
+4. Run the LangGraph multi-agent RCA workflow.
+5. Reject unsupported claims through the independent verifier.
+6. Request and approve a bounded recovery action.
+7. Execute sandbox recovery and verify both service health and business flow.
+8. Persist metrics, traces, audit events, and benchmark artifacts.
+
+## Benchmark Snapshot
+
+The current benchmark suite uses 3 ground-truth scenarios with 3 repeated runs each.
+
+| Metric | Result |
+| --- | --- |
+| Closed-loop deterministic scenarios | 3 / 3 passed |
+| Prometheus evidence coverage | 100% |
+| Recovery verification rate | 100% |
+| Multi-agent root-cause match | 9 / 9 |
+| Single-agent root-cause match | 9 / 9 |
+| Multi-agent strict evidence citation coverage | 8 / 9 |
+| Single-agent strict evidence citation coverage | 0 / 9 |
+| Multi-agent mean latency | 20.28s |
+| Single-agent mean latency | 3.06s |
+
+The useful tradeoff is not inflated accuracy on the small deterministic dataset. The multi-agent path improves evidence discipline and independent verification at higher runtime cost, so it is best suited for higher-risk incidents.
+
+More detail: [docs/benchmarks.md](docs/benchmarks.md).
+
+## Quick Start
+
+Prerequisites:
+
+- Python 3.11+
+- Docker Desktop
+- Node.js 20+
+
+Install Python dependencies:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m uvicorn axiom_ops.app:app --reload
 ```
 
-打开 `http://127.0.0.1:8000/docs`，或执行：
+Start the local lab and control plane:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-Invoke-RestMethod http://127.0.0.1:8000/ready
+.\scripts\start_lab.ps1
+.\scripts\start_control_plane.ps1
 ```
 
-运行测试：
+Run backend tests:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-## 运行故障实验
-
-确保 Docker Desktop 已启动，然后执行：
+Start the console:
 
 ```powershell
-.\scripts\start_lab.ps1
-.\.venv\Scripts\python.exe scripts\run_scenario.py --all
+cd frontend
+npm install
+npm run dev
 ```
 
-服务地址：
+Open the console printed by Vite, then create an incident and follow the guided workflow.
 
-- Order API：`http://127.0.0.1:18001/docs`
-- Inventory API：`http://127.0.0.1:18002/docs`
-- Prometheus：`http://127.0.0.1:19090`
-
-实验结果保存到被 Git 忽略的 `artifacts/lab/<run-id>/`：
+## Repository Layout
 
 ```text
-ground-truth.json
-requests.json
-metrics.json
-result.json
+src/axiom_ops/              Python package
+src/axiom_ops/control_plane Incident, evidence, RCA, recovery, and observability
+src/axiom_ops/lab           Fault-injection microservice lab
+frontend/                   React operations console
+ops-control-plane/          Docker Compose and MySQL migrations
+ops-lab/                    Docker Compose lab services and Prometheus config
+scripts/                    Local run and verification scripts
+tests/                      Unit and contract tests
+docs/                       Public documentation
 ```
 
-停止实验环境：
+## Documentation
 
-```powershell
-.\scripts\stop_lab.ps1
-```
+- [Documentation index](docs/README.md)
+- [Architecture](docs/architecture.md)
+- [Deployment](docs/deployment.md)
+- [API](docs/api.md)
+- [Benchmarks](docs/benchmarks.md)
 
-## 运行 Incident 控制面
+## Security Notes
 
-```powershell
-.\scripts\start_control_plane.ps1
-.\.venv\Scripts\python.exe scripts\verify_control_plane.py
-.\scripts\verify_outbox_recovery.ps1
-```
+- Do not commit local credentials or runtime artifacts.
+- Agents are read-only for diagnosis; recovery is handled by backend policy and role gates.
+- Evidence and RCA records are persisted with immutable metadata and integrity checks.
+- The default recovery action is scoped to the local sandbox lab.
 
-控制面 API：`http://127.0.0.1:18000/docs`。
+## License
 
-停止环境但保留 MySQL 数据：
-
-```powershell
-.\scripts\stop_control_plane.ps1
-```
-
-需要重新执行初始化 SQL 时，删除实验数据卷：
-
-```powershell
-docker compose -f ops-control-plane/docker-compose.yml down -v
-```
-
-## 运行 Evidence 验证
-
-同时启动 Phase 1 Lab 与控制面：
-
-```powershell
-.\scripts\start_lab.ps1
-.\scripts\start_control_plane.ps1
-.\.venv\Scripts\python.exe scripts\verify_evidence.py
-.\scripts\verify_evidence_immutability.ps1
-```
-
-最后一条命令会创建专用验证 Evidence，确认数据库拒绝 UPDATE/DELETE，并故意篡改该验证文件以确认读取返回 `409`。
-
-## 最终技术栈
-
-- Agent：Python、FastAPI、LangGraph、DeepSeek
-- 基础设施：MySQL、Redis、RocketMQ、Qdrant
-- 观测与实验：Prometheus、OpenTelemetry、Docker Compose
-- 前端：React、TypeScript、SSE
-
-## 上游代码基线
-
-项目直接以 [`bcefghj/multi-agent-aiops`](https://github.com/bcefghj/multi-agent-aiops) 为上游代码基线，已配置为 Git 远程 `upstream`。上游模块按 AxiomOps 的技术栈和执行 Phase 逐步迁移，不同时保留 Python、Java、Go 三套实现。
-
-项目仓库：[`lovecandies/AxiomOps`](https://github.com/lovecandies/AxiomOps)
-
-详细取舍见 [上游迁移清单](docs/upstream-audit.md)、[架构基线](docs/architecture.md)、[Phase 2 蓝图](docs/phase-2-blueprint.md) 和 [Phase 3 蓝图](docs/phase-3-blueprint.md)。
+MIT. See [LICENSE](LICENSE).

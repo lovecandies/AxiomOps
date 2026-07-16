@@ -1,60 +1,80 @@
-# AxiomOps 架构基线
+# Architecture
 
-## 目标闭环
+AxiomOps is split into a deterministic control plane, a reproducible fault lab, and a bounded multi-agent RCA runtime.
 
-```text
-告警 -> 调查 -> Evidence -> RCA -> 独立验证 -> 策略 -> 审批 -> Sandbox 恢复 -> SLO 验证/回滚
+## Design Principles
+
+- MySQL is the final source of truth for incidents, evidence metadata, RCA reports, approvals, and executions.
+- Agents read evidence and produce structured RCA; they do not directly change the system.
+- Recovery is executed by backend policy after role-separated approval.
+- Runtime caches and indexes are rebuildable from durable records.
+- Benchmarks must be generated from repeatable fault scenarios.
+
+## Runtime Components
+
+| Component | Responsibility |
+| --- | --- |
+| FastAPI control plane | Incident APIs, evidence collection, RCA orchestration, approvals, recovery |
+| MySQL | Final facts, audit events, Outbox rows, RCA reports, recovery records |
+| RocketMQ | Reliable business dispatch from the transactional Outbox |
+| Redis | LangGraph checkpoint state and resumable runtime data |
+| Qdrant | Rebuildable index of approved historical RCA records |
+| Evidence file store | Raw tool responses with integrity metadata |
+| Prometheus | Metrics source for lab services and control-plane observability |
+| React console | Guided incident workflow and SSE timeline |
+
+## Agent Graph
+
+```mermaid
+flowchart TB
+    Incident["Incident + evidence capsule"] --> Commander["Incident Commander"]
+    Commander --> Metrics["Metrics Investigator"]
+    Commander --> Logs["Logs / Trace Investigator"]
+    Commander --> Change["Change Investigator"]
+    Metrics --> Synth["RCA Synthesizer"]
+    Logs --> Synth
+    Change --> Synth
+    Synth --> Guard["Citation Guard"]
+    Guard --> Verifier["Independent Verifier"]
+    Verifier --> Report["Verified RCA report"]
 ```
 
-## Agent Runtime
+Current lab evidence is strongest for metrics, fault state, service health, and order-flow probes. Log and change investigator nodes are part of the graph contract and can be connected to richer production sources without changing the RCA report schema.
 
-- Incident Commander
-- Metrics Investigator
-- Logs/Trace Investigator
-- Change Investigator
-- RCA Synthesizer
-- Independent Verifier
+## Incident Lifecycle
 
-审批、策略、执行、幂等、重试、SLO 判断和回滚是确定性工作流节点。
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Control Plane
+    participant DB as MySQL
+    participant MQ as RocketMQ
+    participant Agent as LangGraph Runtime
+    participant Lab as Fault Lab
 
-## 数据职责
-
-| 组件 | 职责 |
-|---|---|
-| MySQL | Incident、Agent Run、Evidence 元数据、RCA、审批、执行、工作流快照和 Outbox |
-| Redis | LangGraph Checkpoint、锁、进度、预算、限流、缓存和短期记忆 |
-| RocketMQ | 业务级启动、恢复和执行调度 |
-| Qdrant | Runbook、服务知识和已验证历史 Incident 的可重建向量索引 |
-| 文件系统 | 原始日志、指标响应、Trace 和执行产物 |
-
-## 参考模式
-
-- DeerFlow：Lead Agent、动态 Sub-Agent、Task Capsule、Skills 渐进加载、Sandbox、上下文压缩和长期记忆。
-- Claude Code：Plan -> Tool -> Observe、独立子上下文、工具权限、Pre/Post Hooks、预算和会话恢复。
-- LangGraph：StateGraph、动态并行、Interrupt、Checkpoint 和 Resume，是唯一 Agent 编排依赖。
-
-## 当前实现
-
-Phase 1 已实现可重复故障实验。Phase 2 已增加可靠 Incident 控制面：
-
-```text
-POST /incidents
-  -> MySQL: Incident + Audit Event + Outbox（同一事务）
-  -> Outbox Relay（短租约、失败重试）
-  -> RocketMQ 5 Proxy
-  -> 幂等 Consumer
-  -> INVESTIGATION_QUEUED
+    User->>API: Create incident
+    API->>DB: Insert incident and audit event
+    API->>DB: Insert Outbox event
+    DB-->>MQ: Relay dispatches event
+    User->>API: Collect typed evidence
+    API->>Lab: Probe metrics, health, fault state, order flow
+    API->>DB: Persist evidence metadata
+    User->>API: Start RCA
+    API->>Agent: Build evidence capsule
+    Agent->>DB: Store run steps and report
+    User->>API: Request recovery
+    API->>DB: Store pending approval
+    User->>API: Approve and execute
+    API->>Lab: Reset bounded sandbox fault
+    API->>DB: Store execution and verification
 ```
 
-- 两个 FastAPI 实验服务共用一个版本化镜像。
-- Prometheus 每秒采集 HTTP、延迟、下游状态和故障模式。
-- 场景运行器在注入前后计算指标差值，并在恢复后检查正常请求。
-- 每次运行保存 Ground Truth、请求、指标和结果。
-- MySQL 保存 Incident 当前状态、只追加审计事件、Outbox 与消费幂等记录。
-- RocketMQ 不可用时 API 仍可落库，恢复后 Relay 自动补发。
-- 消费端只在 MySQL 事务提交后确认消息，重复消息不重复推进状态。
-- Phase 3 增加 Prometheus Metrics 与服务 Health 两个白名单 Typed Tool。
-- Tool Observation 以排他文件写入保存，MySQL 只保存可检索元数据与 SHA-256。
-- Evidence 表由 Trigger 禁止更新和删除，内容读取前必须通过哈希校验。
+## Recovery Boundary
 
-Agent、RCA 和恢复执行器尚未实现。
+The default recovery action is `reset_inventory_fault`, scoped to the local lab. The backend verifies:
+
+- requester and approver are separated,
+- only approved actions can run,
+- each approval maps to one idempotent execution,
+- service health and order-flow checks pass after recovery,
+- rollback information is recorded if verification fails.

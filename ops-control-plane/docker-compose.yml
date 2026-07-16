@@ -62,16 +62,44 @@ services:
     environment:
       MYSQL_PWD: root
     volumes:
-      - ./mysql/002_evidence.sql:/migration.sql:ro
+      - ./mysql:/migrations:ro
     depends_on:
       mysql:
         condition: service_healthy
     entrypoint: ["sh", "-c"]
     command:
-      - mysql -h mysql -u root axiomops < /migration.sql
+      - >-
+        for migration in /migrations/002_evidence.sql /migrations/003_rca.sql /migrations/004_phase5.sql /migrations/005_phase6.sql /migrations/006_phase8_evidence_kinds.sql; do
+          mysql -h mysql -u root axiomops < $$migration || exit 1;
+        done
+
+  redis:
+    image: redis:8.2.7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  qdrant:
+    image: qdrant/qdrant:v1.18.0
+    ports:
+      - "16333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/6333"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
 
   control-plane:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase7
     build:
       context: ..
       dockerfile: ops-control-plane/Dockerfile
@@ -88,6 +116,10 @@ services:
       AXIOMOPS_CONTROL_ORDER_SERVICE_URL: http://host.docker.internal:18001
       AXIOMOPS_CONTROL_INVENTORY_SERVICE_URL: http://host.docker.internal:18002
       AXIOMOPS_CONTROL_EVIDENCE_ROOT: /var/lib/axiomops/evidence
+      AXIOMOPS_CONTROL_DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      AXIOMOPS_CONTROL_DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-pro}
+      AXIOMOPS_CONTROL_REDIS_URL: redis://redis:6379
+      AXIOMOPS_CONTROL_QDRANT_URL: http://qdrant:6333
     ports:
       - "18000:8000"
     depends_on:
@@ -95,6 +127,10 @@ services:
         condition: service_completed_successfully
       rocketmq-init:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     volumes:
       - evidence-data:/var/lib/axiomops/evidence
     healthcheck:
@@ -104,7 +140,7 @@ services:
       retries: 20
 
   outbox-relay:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase7
     pull_policy: never
     command: python -m axiom_ops.control_plane.relay
     environment: *control-environment
@@ -114,7 +150,7 @@ services:
     restart: unless-stopped
 
   investigation-consumer:
-    image: axiomops-control-plane:phase3
+    image: axiomops-control-plane:phase7
     pull_policy: never
     command: python -m axiom_ops.control_plane.consumer
     environment: *control-environment
@@ -126,3 +162,5 @@ services:
 volumes:
   mysql-data:
   evidence-data:
+  redis-data:
+  qdrant-data:
