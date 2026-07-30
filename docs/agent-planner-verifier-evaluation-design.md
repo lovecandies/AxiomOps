@@ -36,3 +36,7 @@ Incident + 已有 Evidence 目录
 | Verifier 语义对抗 | 仅 Citation Guard | Citation Guard + Verifier | 合法引用但无支撑结论的拦截率、错误发布率 |
 
 评测案例与原始输出写入 `artifacts/evaluations/`；公开文档只保留口径和可复现命令。
+
+## 当前首轮结果
+
+使用 DeepSeek 运行 9 个带 Ground Truth 的首轮调查案例：8 个案例返回有效计划，8 个命中预期的关键工具；与规则补齐的 32 次调用相比，模型受控计划执行 11 次工具调用，首轮减少 65.62%。另有 1 个模型调用失败，系统设计为回退到确定性补齐策略。

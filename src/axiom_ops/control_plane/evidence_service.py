@@ -51,6 +51,7 @@ class EvidenceService:
         trace_tool: TraceSnapshotTool | None = None,
         change_tool: ChangeEventTool | None = None,
         tool_planner_factory: Callable[[], ToolPlanner] | None = None,
+        incident_loader: Callable[[str], Any | None] | None = None,
     ) -> None:
         self.repository = repository
         self.storage = storage
@@ -61,6 +62,7 @@ class EvidenceService:
         self.trace_tool = trace_tool
         self.change_tool = change_tool
         self.tool_planner_factory = tool_planner_factory
+        self.incident_loader = incident_loader
 
     def _ensure_incident(self, incident_id: str) -> None:
         if not self.repository.incident_exists(incident_id):
@@ -198,8 +200,12 @@ class EvidenceService:
         if self.tool_planner_factory is None:
             return fallback
         try:
+            incident = self.incident_loader(incident_id) if self.incident_loader else None
+            incident_context = (
+                incident.model_dump(mode="json") if incident is not None else {"id": incident_id}
+            )
             proposed = self.tool_planner_factory().plan_tools(
-                {"id": incident_id},
+                incident_context,
                 [
                     {"id": item.id, "kind": item.kind.value, "source": item.source}
                     for item in evidence
@@ -211,6 +217,9 @@ class EvidenceService:
         selections: list[ToolSelectionItem] = []
         rejected = 0
         for item in proposed.selections:
+            if len(selections) >= 2:
+                rejected += 1
+                continue
             canonical = allowed.get(item.tool)
             if canonical is None or any(selected.tool == item.tool for selected in selections):
                 rejected += 1

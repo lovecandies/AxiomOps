@@ -55,6 +55,25 @@ Run the benchmark with:
 
 Evaluation design and constraints are documented in [Optimization Evaluation](optimization-evaluation.md).
 
+## Real-model Controlled Planner
+
+The first-round Planner evaluation uses 9 labeled investigation cases. It compares the model's bounded next-tool proposal with collecting every currently missing allowlisted tool. The model may propose at most two tools; the backend canonicalizes parameters, rejects invalid proposals, and falls back to deterministic completion on failure.
+
+| Metric | Result |
+| --- | ---: |
+| Model response success | 8 / 9 |
+| Required first-tool coverage | 8 / 9 |
+| Missing-only baseline calls | 32 |
+| Controlled Planner calls | 11 |
+| First-round tool-call reduction | 65.62% |
+| Rejected unsafe proposals | 0 |
+
+This is a small, labeled first-round evaluation, not a claim of production tool-planning accuracy. One model failure is retained in the report and demonstrates why the deterministic fallback remains part of the control plane.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_tool_planner_evaluation.py
+```
+
 ## Reproducing
 
 Start the lab and control plane, then run:

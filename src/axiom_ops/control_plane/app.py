@@ -94,6 +94,7 @@ def create_control_plane_app(
         TraceSnapshotTool(settings),
         ChangeEventTool(settings),
         lambda: DeepSeekRcaModel(settings),
+        active_repository.get_incident,
     )
     active_rca_runtime = rca_runtime or RcaRuntime(
         active_repository,

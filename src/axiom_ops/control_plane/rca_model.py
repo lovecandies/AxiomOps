@@ -181,9 +181,14 @@ class DeepSeekRcaModel:
                 "You are an AxiomOps diagnostic planner. Choose only the next useful "
                 "read-only diagnostic tools from the supplied allowlist. Do not propose "
                 "recovery, URLs, shell commands, or custom parameters. Prefer missing "
-                "causal Evidence and avoid evidence kinds already present."
+                "causal Evidence and avoid evidence kinds already present. Choose no more "
+                "than two tools for this investigation round."
             ),
-            {"incident": incident, "evidence_catalog": evidence_catalog},
+            {
+                "incident": incident,
+                "evidence_catalog": evidence_catalog,
+                "allowlisted_tools": ["metrics", "health", "fault_state", "order_flow", "trace", "change"],
+            },
         )
 
     def investigate(
