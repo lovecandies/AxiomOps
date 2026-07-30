@@ -199,6 +199,7 @@ docs/                       公开项目文档
 - [部署指南](docs/deployment.md)
 - [API 文档](docs/api.md)
 - [Benchmark](docs/benchmarks.md)
+- [优化效果评测](docs/optimization-evaluation.md)
 - [架构决策记录](docs/adr/)
 
 ## 安全说明

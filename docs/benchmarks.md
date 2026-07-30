@@ -36,6 +36,25 @@ The current comparison uses the same three scenarios with three repeats each. A 
 
 The small deterministic dataset does not show a root-cause accuracy lift. The value of the multi-agent workflow is stricter evidence discipline, role separation, and independent verification. The cost is higher latency and model usage, so the full graph is intended for incidents where traceability matters more than fastest possible response.
 
+## Engineering Optimization Benchmark
+
+The following deterministic benchmark measures the engineering controls around the Agent graph. It uses injected invalid citations, seven Evidence-completeness states, a fixed large Evidence corpus, and one forced interruption at synthesis. It does not claim a model accuracy lift.
+
+| Optimization | Baseline | Result | Boundary |
+| --- | ---: | ---: | --- |
+| Cross-Incident citation release | No Citation Guard | 12 / 12 invalid citations intercepted; guarded release rate 0% | Measures deterministic citation safety, not semantic truthfulness |
+| Missing-only Evidence collection | Collect all 6 tools every time | 42 calls → 21 calls across 7 completeness states (50% fewer calls), with 100% required-Evidence coverage | Applies when an Incident already has partial Evidence |
+| Evidence Capsule context | Raw fixed corpus | 27,164 bytes → 11,977 bytes (55.91% reduction), with IDs and SHA-256 retained | Fixed synthetic corpus; production reduction depends on payload size |
+| Checkpoint resume | Restart the 6 Agent nodes | Resume executes 2 new calls and avoids re-running 4 / 6 nodes (66.67%) | Applies only after an interrupted run |
+
+Run the benchmark with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_optimization_benchmark.py
+```
+
+Evaluation design and constraints are documented in [Optimization Evaluation](optimization-evaluation.md).
+
 ## Reproducing
 
 Start the lab and control plane, then run:

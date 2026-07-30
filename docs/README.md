@@ -14,6 +14,7 @@
 | [部署指南](deployment.md) | 本地 Docker Compose 启动与运行命令 |
 | [API 文档](api.md) | 控制台和脚本使用的主要 REST Endpoint |
 | [Benchmark](benchmarks.md) | 当前可复现实验结果和复现方式 |
+| [优化效果评测](optimization-evaluation.md) | 说明 Citation Guard、Evidence 补齐、上下文压缩与 Checkpoint 的对照口径 |
 | [架构决策记录](adr/) | 说明 Agentic Workflow、Evidence、恢复门禁、Outbox、Memory 与多 Agent 的关键取舍 |
 
 ## 推荐阅读顺序
@@ -24,4 +25,5 @@
 4. 按 [部署指南](deployment.md) 启动本地环境。
 5. 使用 [五分钟演示脚本](demo-script.md) 跑通端到端链路。
 6. 阅读 [Agent 评测说明](agent-evaluation.md) 和 [Benchmark](benchmarks.md)，理解当前实验结果与边界。
-7. 阅读 [架构决策记录](adr/)，了解关键工程取舍。
+7. 阅读 [优化效果评测](optimization-evaluation.md)，理解工程优化指标的基线和适用边界。
+8. 阅读 [架构决策记录](adr/)，了解关键工程取舍。
