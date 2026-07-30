@@ -27,6 +27,7 @@ docs/AxiomOps-Phase0-7-*.md
 docs/upstream-audit.md
 docs/*interview*
 docs/*resume*
+docs/AxiomOps-*综合手册.md
 docs/*metrics-audit*
 docs/*blueprint*
 scripts/run_agent_comparison.py
