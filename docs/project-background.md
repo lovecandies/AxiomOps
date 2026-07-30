@@ -99,8 +99,12 @@ AxiomOps 将外部观测能力封装为 Typed Tools：
 | Service Health | `SERVICE_HEALTH` | 检查服务健康状态 |
 | Fault State | `FAULT_STATE` | 读取实验环境当前故障注入状态 |
 | Order Flow Probe | `ORDER_FLOW_PROBE` | 探测订单链路是否被库存依赖阻断 |
+| Trace Snapshot | `TRACE_SNAPSHOT` | 读取最近 Order -> Inventory 调用链路、耗时和失败点 |
+| Change Event | `CHANGE_EVENT` | 读取最近故障注入、恢复或配置类变更事件 |
 
 Evidence 原始 JSON 写入文件系统，MySQL 保存路径、哈希、类型和观测时间。读取时会做完整性校验，数据库层也拒绝更新和删除 Evidence。
+
+为了避免 Agent 自由调用系统，AxiomOps 还提供受控工具选择：Planner 只能在白名单工具中选择当前 Incident 缺失的 Evidence 类型，真正的工具执行仍由后端完成并保存为不可变 Evidence。
 
 ### Agent 推理层
 
@@ -133,6 +137,7 @@ AxiomOps 在实现上采用了以下工程方法：
 
 - **先实验后 Agent**：先构建固定故障集与 Ground Truth，再接入 Agent，避免没有基准的主观评估。
 - **Evidence First**：所有诊断结论都必须引用已保存 Evidence，历史记忆不能冒充当前事实。
+- **Controlled Tool Selection**：Planner 在白名单工具中选择缺失证据，兼顾 Agent 调查自主性和后端安全边界。
 - **Typed Tool Contract**：工具输入输出结构化，减少 Agent 自由调用带来的不确定性。
 - **Citation Guard**：RCA 引用必须落在当前 Incident 的 Evidence 集合内。
 - **Independent Verification**：用独立验证节点检查结论是否被证据支撑。
@@ -165,6 +170,6 @@ AxiomOps 在实现上采用了以下工程方法：
 
 ## 项目边界
 
-AxiomOps 当前聚焦本地可复现实验环境，不宣称已经覆盖完整生产级 AIOps 平台。Logs / Trace 和 Change Investigator 已经在图中建模，但真实日志平台、发布平台和配置中心的接入仍属于后续扩展方向。
+AxiomOps 当前聚焦本地可复现实验环境，不宣称已经覆盖完整生产级 AIOps 平台。项目已经提供轻量 Trace Snapshot 和 Change Event Evidence，用于证明链路与变更证据如何进入 RCA；真实日志平台、Trace 后端、发布平台和配置中心的接入仍属于后续生产化扩展方向。
 
 项目保留这个边界，是为了让当前能力可运行、可测试、可解释，而不是把未接入的数据源包装成已完成能力。

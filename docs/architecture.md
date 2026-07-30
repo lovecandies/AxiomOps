@@ -39,7 +39,7 @@ flowchart TB
     Verifier --> Report["Verified RCA report"]
 ```
 
-Current lab evidence is strongest for metrics, fault state, service health, and order-flow probes. Log and change investigator nodes are part of the graph contract and can be connected to richer production sources without changing the RCA report schema.
+Current lab evidence covers metrics, fault state, service health, order-flow probes, lightweight trace snapshots, and change events. The trace and change sources are intentionally small local lab sources; production deployments can connect them to OpenTelemetry backends and release/configuration systems without changing the Evidence contract.
 
 ## Incident Lifecycle
 
@@ -56,8 +56,8 @@ sequenceDiagram
     API->>DB: Insert incident and audit event
     API->>DB: Insert Outbox event
     DB-->>MQ: Relay dispatches event
-    User->>API: Collect typed evidence
-    API->>Lab: Probe metrics, health, fault state, order flow
+    User->>API: Plan and collect typed evidence
+    API->>Lab: Probe metrics, health, fault state, order flow, trace, change
     API->>DB: Persist evidence metadata
     User->>API: Start RCA
     API->>Agent: Build evidence capsule

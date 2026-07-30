@@ -8,7 +8,7 @@ from axiom_ops.control_plane.evidence_storage import (
     EvidenceIntegrityError,
     EvidenceStorage,
 )
-from axiom_ops.control_plane.models import HealthToolInput, MetricsToolInput
+from axiom_ops.control_plane.models import EvidenceView, HealthToolInput, MetricsToolInput
 
 
 class MissingIncidentRepository:
@@ -22,6 +22,35 @@ class FailingIfExecutedTool:
 
     def execute(self, tool_input: object) -> tuple[datetime, dict]:
         raise AssertionError("tool executed before incident validation")
+
+
+class ExistingEvidenceRepository:
+    def __init__(self, kinds: list[str]) -> None:
+        self.kinds = kinds
+
+    def incident_exists(self, incident_id: str) -> bool:
+        return True
+
+    def list_for_incident(self, incident_id: str) -> list[EvidenceView]:
+        now = datetime.now(UTC)
+        return [
+            EvidenceView.model_validate(
+                {
+                    "id": f"evidence-{index}",
+                    "incident_id": incident_id,
+                    "kind": kind,
+                    "tool_name": "test",
+                    "tool_input": {},
+                    "source": "test",
+                    "artifact_path": "test.json",
+                    "content_sha256": "0" * 64,
+                    "byte_size": 2,
+                    "observed_at": now,
+                    "created_at": now,
+                }
+            )
+            for index, kind in enumerate(self.kinds)
+        ]
 
 
 def test_evidence_storage_is_write_once_and_hash_verified(tmp_path: Path) -> None:
@@ -69,3 +98,23 @@ def test_missing_incident_is_rejected_before_tool_execution(
 
     with pytest.raises(IncidentNotFound):
         getattr(service, method)("missing", tool_input)
+
+
+def test_tool_selection_plans_only_missing_allowlisted_evidence(tmp_path: Path) -> None:
+    tool = FailingIfExecutedTool()
+    service = EvidenceService(
+        ExistingEvidenceRepository(["FAULT_STATE", "ORDER_FLOW_PROBE"]),
+        EvidenceStorage(tmp_path),
+        tool,
+        tool,
+    )
+
+    plan = service.plan_tool_selection("incident-1")
+
+    assert [selection.tool for selection in plan.selections] == [
+        "metrics",
+        "health",
+        "trace",
+        "change",
+    ]
+    assert all(selection.reason for selection in plan.selections)

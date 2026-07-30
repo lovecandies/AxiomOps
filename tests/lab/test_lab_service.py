@@ -66,6 +66,9 @@ def test_order_service_calls_inventory() -> None:
 
     assert response.status_code == 200
     assert response.json()["inventory"]["available"] == 42
+    traces = client.get("/admin/traces").json()
+    assert traces["count"] == 1
+    assert traces["spans"][0]["downstream"]["status"] == "success"
 
 
 def test_order_service_maps_downstream_error_to_503() -> None:
@@ -85,3 +88,23 @@ def test_order_service_maps_downstream_error_to_503() -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "inventory returned 503"
+    traces = client.get("/admin/traces").json()
+    assert traces["spans"][0]["downstream"]["status"] == "http_503"
+
+
+def test_inventory_fault_changes_are_observable() -> None:
+    client = TestClient(
+        create_lab_app(
+            LabSettings(service_name="inventory-service", role="inventory")
+        )
+    )
+
+    client.post(
+        "/admin/faults",
+        json={"mode": "latency", "delay_ms": 250, "error_rate": 0.0},
+    )
+    changes = client.get("/admin/changes").json()
+
+    assert changes["count"] == 1
+    assert changes["changes"][0]["change_type"] == "fault_injection"
+    assert "latency" in changes["changes"][0]["version"]

@@ -5,6 +5,7 @@ import httpx
 
 from axiom_ops.control_plane.config import ControlPlaneSettings
 from axiom_ops.control_plane.models import (
+    ChangeEventToolInput,
     EvidenceKind,
     FaultStateToolInput,
     HealthToolInput,
@@ -12,6 +13,7 @@ from axiom_ops.control_plane.models import (
     MetricSignal,
     MetricsToolInput,
     OrderFlowProbeInput,
+    TraceSnapshotToolInput,
     ToolObservation,
 )
 
@@ -140,3 +142,65 @@ class OrderFlowProbeTool:
         except httpx.HTTPError as exc:
             raise ToolExecutionError(f"order-flow probe failed: {exc}") from exc
         return ToolObservation(tool_name=self.name, kind=self.kind, input=tool_input.model_dump(mode="json"), source=self.source, observed_at=observed_at, duration_ms=round((perf_counter() - started) * 1000, 2), data={"status_code": response.status_code, "body": body})
+
+
+class TraceSnapshotTool:
+    name = "http.trace.snapshot"
+    kind = EvidenceKind.TRACE_SNAPSHOT
+
+    def __init__(self, settings: ControlPlaneSettings) -> None:
+        self.urls = {
+            LabService.ORDER: settings.order_service_url.rstrip("/"),
+            LabService.INVENTORY: settings.inventory_service_url.rstrip("/"),
+        }
+
+    def execute(self, tool_input: TraceSnapshotToolInput) -> ToolObservation:
+        source = self.urls[tool_input.service]
+        started = perf_counter()
+        observed_at = datetime.now(UTC)
+        try:
+            response = httpx.get(f"{source}/admin/traces", timeout=5)
+            response.raise_for_status()
+            body = response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ToolExecutionError(f"trace snapshot failed: {exc}") from exc
+        return ToolObservation(
+            tool_name=self.name,
+            kind=self.kind,
+            input=tool_input.model_dump(mode="json"),
+            source=source,
+            observed_at=observed_at,
+            duration_ms=round((perf_counter() - started) * 1000, 2),
+            data={"status_code": response.status_code, "body": body},
+        )
+
+
+class ChangeEventTool:
+    name = "http.change.events"
+    kind = EvidenceKind.CHANGE_EVENT
+
+    def __init__(self, settings: ControlPlaneSettings) -> None:
+        self.urls = {
+            LabService.ORDER: settings.order_service_url.rstrip("/"),
+            LabService.INVENTORY: settings.inventory_service_url.rstrip("/"),
+        }
+
+    def execute(self, tool_input: ChangeEventToolInput) -> ToolObservation:
+        source = self.urls[tool_input.service]
+        started = perf_counter()
+        observed_at = datetime.now(UTC)
+        try:
+            response = httpx.get(f"{source}/admin/changes", timeout=5)
+            response.raise_for_status()
+            body = response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ToolExecutionError(f"change event snapshot failed: {exc}") from exc
+        return ToolObservation(
+            tool_name=self.name,
+            kind=self.kind,
+            input=tool_input.model_dump(mode="json"),
+            source=source,
+            observed_at=observed_at,
+            duration_ms=round((perf_counter() - started) * 1000, 2),
+            data={"status_code": response.status_code, "body": body},
+        )

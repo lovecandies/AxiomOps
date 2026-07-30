@@ -59,7 +59,8 @@ AxiomOps 将一次故障处置拆成四层：
 
 项目围绕“可证明”和“可恢复”做工程设计：
 
-- **Typed Tools**：将 Prometheus 指标、服务健康、故障注入状态和订单链路探测封装为固定输入/输出的工具，避免 Agent 自由访问系统。
+- **受控工具选择**：Planner 根据当前 Incident 已有 Evidence，在白名单工具中选择缺失的诊断证据，后端负责真正执行工具并落库。
+- **Typed Tools**：将 Prometheus 指标、服务健康、故障注入状态、订单链路探测、Trace 快照和 Change 事件封装为固定输入/输出的工具，避免 Agent 自由访问系统。
 - **不可变 Evidence**：每次工具调用的原始 JSON 落盘，MySQL 保存元数据与 SHA-256；数据库 Trigger 拒绝 Evidence 更新和删除。
 - **LangGraph 多 Agent**：Commander 负责规划，Metrics / Logs-Trace / Change Investigator 分工调查，RCA Synthesizer 合成结构化 RCA，Independent Verifier 检查证据引用和结论支撑。
 - **上下文与记忆**：Redis 保存 Checkpoint 支持失败恢复；Qdrant 只索引通过 Verifier 的历史 RCA，历史经验只能作为参考，不能冒充当前 Evidence。
@@ -87,7 +88,8 @@ AxiomOps 将一次故障处置拆成四层：
 | --- | --- |
 | 故障实验环境 | 提供 Order -> Inventory 微服务链路，支持延迟、错误率、依赖不可用三类故障注入 |
 | Incident 控制面 | 基于 MySQL 管理 Incident 状态、审计事件和 Transactional Outbox |
-| Typed Tools | 采集 Prometheus 指标、服务健康、故障注入状态和订单链路探测 |
+| 受控工具选择 | 根据已有 Evidence 自动补齐缺失证据，只允许调用白名单诊断工具 |
+| Typed Tools | 采集 Prometheus 指标、服务健康、故障注入状态、订单链路探测、Trace 快照和 Change 事件 |
 | 不可变 Evidence | 原始 JSON 落盘，MySQL 保存元数据和 SHA-256 完整性校验 |
 | 多 Agent RCA | Commander、Investigator、RCA Synthesizer、Independent Verifier 分工协作 |
 | 上下文与记忆 | Redis Checkpoint 支持恢复，Qdrant 索引已验证历史 RCA |
@@ -132,7 +134,7 @@ flowchart LR
 
 1. 在本地 Inventory 服务注入已知故障。
 2. 在控制面创建 Incident。
-3. 通过 Typed Tools 采集指标、健康状态、故障状态和订单链路 Evidence。
+3. 通过受控工具选择自动补齐指标、健康状态、故障状态、订单链路、Trace 和 Change Evidence。
 4. 启动 LangGraph 多 Agent RCA 工作流。
 5. 由 Independent Verifier 拒绝缺少 Evidence 支撑的结论。
 6. Commander 发起恢复请求，Approver 完成人工审批。

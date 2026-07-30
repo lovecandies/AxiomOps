@@ -87,11 +87,41 @@ class OrderFlowProbeInput(BaseModel):
     """No caller-controlled target: only the fixed Lab order probe is readable."""
 
 
+class TraceSnapshotToolInput(BaseModel):
+    service: LabService = LabService.ORDER
+
+
+class ChangeEventToolInput(BaseModel):
+    service: LabService = LabService.INVENTORY
+
+
 class EvidenceKind(StrEnum):
     METRIC_SNAPSHOT = "METRIC_SNAPSHOT"
     SERVICE_HEALTH = "SERVICE_HEALTH"
     FAULT_STATE = "FAULT_STATE"
     ORDER_FLOW_PROBE = "ORDER_FLOW_PROBE"
+    TRACE_SNAPSHOT = "TRACE_SNAPSHOT"
+    CHANGE_EVENT = "CHANGE_EVENT"
+
+
+class DiagnosticToolName(StrEnum):
+    METRICS = "metrics"
+    HEALTH = "health"
+    FAULT_STATE = "fault_state"
+    ORDER_FLOW = "order_flow"
+    TRACE = "trace"
+    CHANGE = "change"
+
+
+class ToolSelectionItem(BaseModel):
+    tool: DiagnosticToolName
+    reason: str = Field(min_length=1, max_length=500)
+    tool_input: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolSelectionPlan(BaseModel):
+    objective: str = Field(min_length=1, max_length=500)
+    selections: list[ToolSelectionItem] = Field(default_factory=list, max_length=10)
 
 
 class EvidenceView(BaseModel):

@@ -27,6 +27,10 @@ The control plane exposes REST endpoints for incident workflow automation and th
 | `POST` | `/incidents/{incident_id}/tools/health` | `SERVICE_HEALTH` |
 | `POST` | `/incidents/{incident_id}/tools/fault-state` | `FAULT_STATE` |
 | `POST` | `/incidents/{incident_id}/tools/order-flow` | `ORDER_FLOW_PROBE` |
+| `POST` | `/incidents/{incident_id}/tools/trace` | `TRACE_SNAPSHOT` |
+| `POST` | `/incidents/{incident_id}/tools/change` | `CHANGE_EVENT` |
+| `GET` | `/incidents/{incident_id}/tools/selection-plan` | Planned missing allowlisted tools |
+| `POST` | `/incidents/{incident_id}/tools/auto-collect` | Execute the current allowlisted selection plan |
 | `GET` | `/incidents/{incident_id}/evidence` | List saved evidence |
 
 Every tool response is persisted as immutable evidence with metadata and an integrity hash.

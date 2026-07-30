@@ -1,11 +1,18 @@
 import httpx
 
 from axiom_ops.control_plane.config import ControlPlaneSettings
-from axiom_ops.control_plane.models import HealthToolInput, MetricsToolInput
+from axiom_ops.control_plane.models import (
+    ChangeEventToolInput,
+    HealthToolInput,
+    MetricsToolInput,
+    TraceSnapshotToolInput,
+)
 from axiom_ops.control_plane.typed_tools import (
+    ChangeEventTool,
     METRIC_QUERIES,
     MetricsSnapshotTool,
     ServiceHealthTool,
+    TraceSnapshotTool,
 )
 from axiom_ops.control_plane.models import MetricSignal
 
@@ -57,3 +64,43 @@ def test_active_fault_query_preserves_fault_mode_label() -> None:
 
     assert "== 1" in query
     assert not query.startswith("max(")
+
+
+def test_trace_tool_reads_allowlisted_lab_endpoint(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_get(url: str, **kwargs) -> httpx.Response:
+        captured.update({"url": url, **kwargs})
+        return httpx.Response(
+            200,
+            json={"service": "order-service", "spans": []},
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    tool = TraceSnapshotTool(ControlPlaneSettings())
+
+    observation = tool.execute(TraceSnapshotToolInput(service="order-service"))
+
+    assert captured["url"].endswith("18001/admin/traces")
+    assert observation.kind == "TRACE_SNAPSHOT"
+
+
+def test_change_tool_reads_allowlisted_lab_endpoint(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_get(url: str, **kwargs) -> httpx.Response:
+        captured.update({"url": url, **kwargs})
+        return httpx.Response(
+            200,
+            json={"service": "inventory-service", "changes": []},
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    tool = ChangeEventTool(ControlPlaneSettings())
+
+    observation = tool.execute(ChangeEventToolInput(service="inventory-service"))
+
+    assert captured["url"].endswith("18002/admin/changes")
+    assert observation.kind == "CHANGE_EVENT"

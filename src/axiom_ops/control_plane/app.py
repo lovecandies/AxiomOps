@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,7 @@ from axiom_ops.control_plane.evidence_storage import (
     EvidenceStorage,
 )
 from axiom_ops.control_plane.models import (
+    ChangeEventToolInput,
     EvidenceView,
     FaultStateToolInput,
     HealthToolInput,
@@ -34,6 +36,8 @@ from axiom_ops.control_plane.models import (
     RecoveryRequest,
     RcaReportView,
     RcaRunView,
+    ToolSelectionPlan,
+    TraceSnapshotToolInput,
 )
 from axiom_ops.control_plane.observability import (
     ControlPlaneObservability,
@@ -59,10 +63,12 @@ from axiom_ops.control_plane.recovery_service import (
 )
 from axiom_ops.control_plane.repository import IdempotencyConflict, IncidentRepository
 from axiom_ops.control_plane.typed_tools import (
+    ChangeEventTool,
     MetricsSnapshotTool,
     InventoryFaultStateTool,
     OrderFlowProbeTool,
     ServiceHealthTool,
+    TraceSnapshotTool,
     ToolExecutionError,
 )
 from starlette.responses import StreamingResponse
@@ -85,6 +91,8 @@ def create_control_plane_app(
         ServiceHealthTool(settings),
         InventoryFaultStateTool(settings),
         OrderFlowProbeTool(settings),
+        TraceSnapshotTool(settings),
+        ChangeEventTool(settings),
     )
     active_rca_runtime = rca_runtime or RcaRuntime(
         active_repository,
@@ -204,7 +212,7 @@ def create_control_plane_app(
 
         return StreamingResponse(stream(), media_type="text/event-stream")
 
-    def execute_tool(action: Callable[[], EvidenceView]) -> EvidenceView:
+    def execute_tool(action: Callable[[], Any]) -> Any:
         try:
             return action()
         except IncidentNotFound as exc:
@@ -277,6 +285,56 @@ def create_control_plane_app(
     ) -> EvidenceView:
         return execute_tool(
             lambda: active_evidence_service.execute_order_flow(incident_id, tool_input)
+        )
+
+    @application.post(
+        "/incidents/{incident_id}/tools/trace",
+        response_model=EvidenceView,
+        status_code=201,
+    )
+    def execute_trace_snapshot(
+        incident_id: str, tool_input: TraceSnapshotToolInput
+    ) -> EvidenceView:
+        return execute_tool(
+            lambda: active_evidence_service.execute_trace_snapshot(
+                incident_id,
+                tool_input,
+            )
+        )
+
+    @application.post(
+        "/incidents/{incident_id}/tools/change",
+        response_model=EvidenceView,
+        status_code=201,
+    )
+    def execute_change_events(
+        incident_id: str, tool_input: ChangeEventToolInput
+    ) -> EvidenceView:
+        return execute_tool(
+            lambda: active_evidence_service.execute_change_events(
+                incident_id,
+                tool_input,
+            )
+        )
+
+    @application.get(
+        "/incidents/{incident_id}/tools/selection-plan",
+        response_model=ToolSelectionPlan,
+    )
+    def plan_tool_selection(incident_id: str) -> ToolSelectionPlan:
+        try:
+            return active_evidence_service.plan_tool_selection(incident_id)
+        except IncidentNotFound as exc:
+            raise HTTPException(status_code=404, detail="incident not found") from exc
+
+    @application.post(
+        "/incidents/{incident_id}/tools/auto-collect",
+        response_model=list[EvidenceView],
+        status_code=201,
+    )
+    def auto_collect_evidence(incident_id: str) -> list[EvidenceView]:
+        return execute_tool(
+            lambda: active_evidence_service.execute_tool_selection(incident_id)
         )
 
     @application.get(

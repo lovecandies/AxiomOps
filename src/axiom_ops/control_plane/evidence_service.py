@@ -4,18 +4,28 @@ from uuid import uuid4
 from axiom_ops.control_plane.evidence_repository import EvidenceRepository
 from axiom_ops.control_plane.evidence_storage import EvidenceStorage
 from axiom_ops.control_plane.models import (
+    ChangeEventToolInput,
+    DiagnosticToolName,
+    EvidenceKind,
     EvidenceView,
     FaultStateToolInput,
     HealthToolInput,
+    LabService,
+    MetricSignal,
     MetricsToolInput,
     OrderFlowProbeInput,
+    ToolSelectionItem,
+    ToolSelectionPlan,
+    TraceSnapshotToolInput,
     ToolObservation,
 )
 from axiom_ops.control_plane.typed_tools import (
+    ChangeEventTool,
     InventoryFaultStateTool,
     MetricsSnapshotTool,
     OrderFlowProbeTool,
     ServiceHealthTool,
+    TraceSnapshotTool,
 )
 
 
@@ -36,6 +46,8 @@ class EvidenceService:
         health_tool: ServiceHealthTool,
         fault_state_tool: InventoryFaultStateTool | None = None,
         order_flow_tool: OrderFlowProbeTool | None = None,
+        trace_tool: TraceSnapshotTool | None = None,
+        change_tool: ChangeEventTool | None = None,
     ) -> None:
         self.repository = repository
         self.storage = storage
@@ -43,6 +55,8 @@ class EvidenceService:
         self.health_tool = health_tool
         self.fault_state_tool = fault_state_tool
         self.order_flow_tool = order_flow_tool
+        self.trace_tool = trace_tool
+        self.change_tool = change_tool
 
     def _ensure_incident(self, incident_id: str) -> None:
         if not self.repository.incident_exists(incident_id):
@@ -100,6 +114,120 @@ class EvidenceService:
         if self.order_flow_tool is None:
             raise RuntimeError("order-flow tool is not configured")
         return self._persist(incident_id, self.order_flow_tool.execute(tool_input))
+
+    def execute_trace_snapshot(
+        self, incident_id: str, tool_input: TraceSnapshotToolInput
+    ) -> EvidenceView:
+        self._ensure_incident(incident_id)
+        if self.trace_tool is None:
+            raise RuntimeError("trace tool is not configured")
+        return self._persist(incident_id, self.trace_tool.execute(tool_input))
+
+    def execute_change_events(
+        self, incident_id: str, tool_input: ChangeEventToolInput
+    ) -> EvidenceView:
+        self._ensure_incident(incident_id)
+        if self.change_tool is None:
+            raise RuntimeError("change tool is not configured")
+        return self._persist(incident_id, self.change_tool.execute(tool_input))
+
+    def plan_tool_selection(self, incident_id: str) -> ToolSelectionPlan:
+        self._ensure_incident(incident_id)
+        existing_kinds = {item.kind for item in self.repository.list_for_incident(incident_id)}
+        selections: list[ToolSelectionItem] = []
+        desired = [
+            (
+                EvidenceKind.FAULT_STATE,
+                DiagnosticToolName.FAULT_STATE,
+                {},
+                "Confirm the current injected fault before reasoning about cause.",
+            ),
+            (
+                EvidenceKind.ORDER_FLOW_PROBE,
+                DiagnosticToolName.ORDER_FLOW,
+                {},
+                "Probe the business order path to verify user-visible impact.",
+            ),
+            (
+                EvidenceKind.METRIC_SNAPSHOT,
+                DiagnosticToolName.METRICS,
+                {"signal": MetricSignal.ORDER_DOWNSTREAM_FAILURES.value},
+                "Collect downstream failure metrics for the affected order path.",
+            ),
+            (
+                EvidenceKind.SERVICE_HEALTH,
+                DiagnosticToolName.HEALTH,
+                {"service": LabService.INVENTORY.value},
+                "Check whether the dependent inventory service is reachable.",
+            ),
+            (
+                EvidenceKind.TRACE_SNAPSHOT,
+                DiagnosticToolName.TRACE,
+                {"service": LabService.ORDER.value},
+                "Inspect recent order-to-inventory spans for failure or latency.",
+            ),
+            (
+                EvidenceKind.CHANGE_EVENT,
+                DiagnosticToolName.CHANGE,
+                {"service": LabService.INVENTORY.value},
+                "Check recent inventory changes that may explain the incident.",
+            ),
+        ]
+        for kind, tool, tool_input, reason in desired:
+            if kind not in existing_kinds:
+                selections.append(
+                    ToolSelectionItem(
+                        tool=tool,
+                        reason=reason,
+                        tool_input=tool_input,
+                    )
+                )
+        return ToolSelectionPlan(
+            objective="Collect missing, allowlisted Evidence for this Incident.",
+            selections=selections,
+        )
+
+    def execute_tool_selection(self, incident_id: str) -> list[EvidenceView]:
+        plan = self.plan_tool_selection(incident_id)
+        collected: list[EvidenceView] = []
+        for selection in plan.selections:
+            collected.append(self._execute_selected_tool(incident_id, selection))
+        return collected
+
+    def _execute_selected_tool(
+        self, incident_id: str, selection: ToolSelectionItem
+    ) -> EvidenceView:
+        if selection.tool == DiagnosticToolName.METRICS:
+            return self.execute_metrics(
+                incident_id,
+                MetricsToolInput.model_validate(selection.tool_input),
+            )
+        if selection.tool == DiagnosticToolName.HEALTH:
+            return self.execute_health(
+                incident_id,
+                HealthToolInput.model_validate(selection.tool_input),
+            )
+        if selection.tool == DiagnosticToolName.FAULT_STATE:
+            return self.execute_fault_state(
+                incident_id,
+                FaultStateToolInput.model_validate(selection.tool_input),
+            )
+        if selection.tool == DiagnosticToolName.ORDER_FLOW:
+            return self.execute_order_flow(
+                incident_id,
+                OrderFlowProbeInput.model_validate(selection.tool_input),
+            )
+        if selection.tool == DiagnosticToolName.TRACE:
+            return self.execute_trace_snapshot(
+                incident_id,
+                TraceSnapshotToolInput.model_validate(selection.tool_input),
+            )
+        if selection.tool == DiagnosticToolName.CHANGE:
+            return self.execute_change_events(
+                incident_id,
+                ChangeEventToolInput.model_validate(selection.tool_input),
+            )
+        raise RuntimeError(f"unsupported selected tool: {selection.tool}")
 
     def list_for_incident(self, incident_id: str) -> list[EvidenceView]:
         self._ensure_incident(incident_id)

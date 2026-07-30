@@ -96,13 +96,15 @@ export function App() {
     if (!selected) return;
     setBusy(true);
     try {
-      const round = await Promise.all([
+      const probes = await Promise.all([
         api.metrics(selected.id), api.health(selected.id), api.faultState(selected.id), api.orderFlow(selected.id),
       ]);
+      const context = await Promise.all([api.trace(selected.id), api.change(selected.id)]);
+      const round = [...probes, ...context];
       setEvidence((items) => [...items, ...round.map((item) => item.data)]);
       setTrace(round.at(-1)?.traceId ?? null);
       setHistoryOpen(false);
-      setMessage("已刷新当前证据批次：指标、健康、故障状态和订单链路均已保存为不可变审计 Evidence。");
+      setMessage("已刷新当前证据批次：指标、健康、故障状态、订单链路、Trace 和 Change 均已保存为不可变审计 Evidence。");
     } catch (error) {
       setMessage(`刷新证据失败：${error instanceof Error ? error.message : String(error)}`);
     } finally { setBusy(false); }
@@ -110,7 +112,7 @@ export function App() {
 
   const currentEvidence = latestEvidenceByKind(evidence);
   const historicalEvidence = evidence.filter((item) => !currentEvidence.some((current) => current.id === item.id));
-  const activeStep = execution ? 4 : approval?.status === "APPROVED" ? 4 : approval ? 3 : report ? 3 : currentEvidence.length >= 4 ? 2 : 1;
+  const activeStep = execution ? 4 : approval?.status === "APPROVED" ? 4 : approval ? 3 : report ? 3 : currentEvidence.length >= 6 ? 2 : 1;
   const timeline = useMemo(() => selected?.events ?? [], [selected]);
 
   return <main className="shell">
@@ -142,15 +144,15 @@ export function App() {
         <StepBar active={activeStep}/>
 
         <div className="flow">
-          <Panel number="1" title="刷新当前故障证据" hint="一次刷新会采集指标、健康、故障注入状态和订单链路。旧 Evidence 不删除，默认收起为审计历史。" icon={<Database size={19}/>} done={currentEvidence.length >= 4}>
-            <div className="actions"><button disabled={busy} onClick={() => void refreshEvidence()}>刷新当前证据批次（4 项）</button><button className="secondary" disabled={busy || historicalEvidence.length === 0} onClick={() => setHistoryOpen((open) => !open)}>{historyOpen ? "收起" : "查看"}历史审计（{historicalEvidence.length} 项）</button></div>
+          <Panel number="1" title="刷新当前故障证据" hint="一次刷新会采集指标、健康、故障注入状态、订单链路、Trace 和 Change。旧 Evidence 不删除，默认收起为审计历史。" icon={<Database size={19}/>} done={currentEvidence.length >= 6}>
+            <div className="actions"><button disabled={busy} onClick={() => void refreshEvidence()}>刷新当前证据批次（6 项）</button><button className="secondary" disabled={busy || historicalEvidence.length === 0} onClick={() => setHistoryOpen((open) => !open)}>{historyOpen ? "收起" : "查看"}历史审计（{historicalEvidence.length} 项）</button></div>
             <p className="helper">当前批次只展示每类最新的一条证据，避免历史记录堆积；所有历史数据仍可审计、不可篡改。</p>
             <EvidenceList items={currentEvidence}/>
             {historyOpen && <div className="history"><strong>历史审计记录（只读）</strong><EvidenceList items={historicalEvidence}/></div>}
           </Panel>
 
           <Panel number="2" title="生成并核验 RCA" hint="多 Agent 分工调查，独立验证器只允许引用已保存的 Evidence。" icon={<ShieldCheck size={19}/>} done={Boolean(report)}>
-            {report ? <div className="report"><strong>已核验 · 置信度 {Math.round(report.confidence * 100)}%</strong><p>{report.root_cause}</p><small>{report.verification.rationale}</small></div> : <><p className="helper">高置信 RCA 需要“故障状态 + Prometheus 指标 + 订单链路”共同支持；证据不足时验证器会拒绝猜测。</p><button disabled={busy || currentEvidence.length < 4} onClick={() => void action("RCA", () => api.startRca(selected.id), (item) => { setRun(item); void action("读取 RCA 报告", () => api.report(selected.id), setReport); })}>使用当前证据开始多 Agent 调查</button></>}
+            {report ? <div className="report"><strong>已核验 · 置信度 {Math.round(report.confidence * 100)}%</strong><p>{report.root_cause}</p><small>{report.verification.rationale}</small></div> : <><p className="helper">高置信 RCA 需要“故障状态 + Prometheus 指标 + 订单链路 + Trace/Change”共同支持；证据不足时验证器会拒绝猜测。</p><button disabled={busy || currentEvidence.length < 6} onClick={() => void action("RCA", () => api.startRca(selected.id), (item) => { setRun(item); void action("读取 RCA 报告", () => api.report(selected.id), setReport); })}>使用当前证据开始多 Agent 调查</button></>}
             {run && <p className="status">本次 Run：{run.status} · {run.verification?.decision ?? "等待验证"}</p>}
           </Panel>
 
@@ -186,5 +188,5 @@ function Panel({ number, title, hint, icon, done, children }: { number: string; 
 function uniqueIncidents(items: Incident[]) { const seen = new Set<string>(); return items.filter((item) => { const key = `${item.title}|${item.service}|${item.severity}`; if (seen.has(key)) return false; seen.add(key); return true; }); }
 function latestEvidenceByKind(items: Evidence[]) { return Object.values(items.reduce<Record<string, Evidence>>((latest, item) => { if (!latest[item.kind] || item.observed_at > latest[item.kind].observed_at) latest[item.kind] = item; return latest; }, {})); }
 function EvidenceList({ items }: { items: Evidence[] }) { return <ul className="evidence">{items.length ? items.map((item) => <li key={item.id}><span>{evidenceName(item.kind)}</span><small>{item.tool_name} · {item.id.slice(0, 8)}</small></li>) : <li className="helper">尚未采集 Evidence。</li>}</ul>; }
-function evidenceName(kind: string) { return ({ METRIC_SNAPSHOT: "Prometheus 指标快照", SERVICE_HEALTH: "服务健康检查", FAULT_STATE: "故障注入状态", ORDER_FLOW_PROBE: "订单链路探测" } as Record<string, string>)[kind] ?? kind; }
+function evidenceName(kind: string) { return ({ METRIC_SNAPSHOT: "Prometheus 指标快照", SERVICE_HEALTH: "服务健康检查", FAULT_STATE: "故障注入状态", ORDER_FLOW_PROBE: "订单链路探测", TRACE_SNAPSHOT: "调用链路快照", CHANGE_EVENT: "变更事件快照" } as Record<string, string>)[kind] ?? kind; }
 function faultDescription(incident: Incident) { const text = `${incident.title} ${incident.summary}`.toLowerCase(); if (text.includes("延迟") || text.includes("latency")) return FAULT_TYPES.latency; if (text.includes("错误率") || text.includes("error rate")) return FAULT_TYPES.error_rate; return FAULT_TYPES.unavailable; }

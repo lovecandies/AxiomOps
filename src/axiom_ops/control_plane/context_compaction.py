@@ -57,6 +57,13 @@ def _relevant_content(kind: str, content: dict[str, Any]) -> Any:
             "duration_ms": content.get("duration_ms"),
             "data": content.get("data"),
         }
+    if kind in {"TRACE_SNAPSHOT", "CHANGE_EVENT", "FAULT_STATE", "ORDER_FLOW_PROBE"}:
+        return {
+            "tool_name": content.get("tool_name"),
+            "input": content.get("input"),
+            "duration_ms": content.get("duration_ms"),
+            "data": content.get("data"),
+        }
     return content
 
 
