@@ -67,6 +67,7 @@ AxiomOps 的思路是：先构建可复现实验环境和确定性证据，再�
 | 可观测性 | Prometheus、W3C Trace Header、结构化审计记录 |
 | 故障实验 | Docker Compose、FastAPI 微服务、脚本化故障注入 |
 | 前端控制台 | React、TypeScript、SSE、Lucide Icons |
+| Agent 工具协议 | MCP Server / Client、Pydantic Schema、固定进程身份与审批门禁 |
 | 验证体系 | pytest、场景 Runner、Benchmark 脚本 |
 
 ## 架构图
@@ -160,6 +161,16 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### MCP Agent 工具
+
+安装 Python 包后，通过 stdio 启动本地 MCP Server：
+
+```powershell
+python -m axiom_ops.mcp.server
+```
+
+它暴露 4 个只读 Evidence 工具（`collect_metrics`、`check_service_health`、`inspect_inventory_fault`、`probe_order_flow`）与 1 个受门禁约束的恢复工具（`execute_approved_recovery`）。恢复默认禁用；仅在既有恢复审批完成后，才启动独立受信任进程并设置 `AXIOMOPS_MCP_ROLE=operator`。
 
 打开 Vite 输出的本地地址，创建 Incident，并按页面指引完成证据采集、RCA、审批和恢复验证。
 
