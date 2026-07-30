@@ -40,7 +40,7 @@ Every tool response is persisted as immutable evidence with metadata and an inte
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/incidents/{incident_id}/rca-runs` | Start a RCA run |
-| `GET` | `/incidents/{incident_id}/rca-report` | Read latest RCA report |
+| `GET` | `/incidents/{incident_id}/rca` | Read latest RCA report |
 
 The RCA report contains root cause, confidence, cited evidence IDs, model-call counters, verifier decision, and audit metadata.
 

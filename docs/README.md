@@ -1,22 +1,25 @@
-# AxiomOps Documentation
+# AxiomOps 文档总览
 
-This directory contains the public project documentation for AxiomOps.
+这里存放 AxiomOps 的公开项目文档。文档表达面向真实工程和产品能力，不包含本地私人笔记或运行产物。
 
-## Guides
+## 文档索引
 
-| Document | Purpose |
+| 文档 | 用途 |
 | --- | --- |
-| [Project Background](project-background.md) | Incident scenario, pain points, design choices, and measured effects |
-| [Architecture](architecture.md) | Runtime components, data ownership, and recovery boundaries |
-| [Deployment](deployment.md) | Local Docker Compose setup and operating commands |
-| [API](api.md) | Main REST endpoints used by the console and scripts |
-| [Benchmarks](benchmarks.md) | Reproducible evaluation setup and current results |
+| [项目背景与方案设计](project-background.md) | 说明项目解决什么问题、如何设计、达到什么效果 |
+| [架构设计](architecture.md) | 说明运行组件、数据职责、Agent 边界和恢复边界 |
+| [五分钟演示脚本](demo-script.md) | 提供一条稳定的端到端展示路径 |
+| [故障案例说明](demo-cases.md) | 说明三个可复现实验场景与 Evidence 映射 |
+| [Agent 评测说明](agent-evaluation.md) | 说明单 Agent / 多 Agent 对照、指标和结论解释 |
+| [部署指南](deployment.md) | 本地 Docker Compose 启动与运行命令 |
+| [API 文档](api.md) | 控制台和脚本使用的主要 REST Endpoint |
+| [Benchmark](benchmarks.md) | 当前可复现实验结果和复现方式 |
 
-## Reading Order
+## 推荐阅读顺序
 
-1. Start with the root [README](../README.md) for the product overview.
-2. Read [Project Background](project-background.md) to understand the problem, solution, and results.
-3. Read [Architecture](architecture.md) to understand the control-plane design.
-4. Use [Deployment](deployment.md) to start the lab and services.
-5. Check [API](api.md) when integrating external tools.
-6. Review [Benchmarks](benchmarks.md) for current evidence and tradeoffs.
+1. 先阅读根目录 [README](../README.md)，理解项目定位。
+2. 阅读 [项目背景与方案设计](project-background.md)，理解业务痛点和整体方案。
+3. 阅读 [架构设计](architecture.md)，理解控制面、多 Agent 和数据边界。
+4. 按 [部署指南](deployment.md) 启动本地环境。
+5. 使用 [五分钟演示脚本](demo-script.md) 跑通端到端链路。
+6. 阅读 [Agent 评测说明](agent-evaluation.md) 和 [Benchmark](benchmarks.md)，理解当前实验结果与边界。

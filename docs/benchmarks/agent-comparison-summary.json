@@ -1,0 +1,29 @@
+{
+  "project": "AxiomOps",
+  "evaluation": "single-agent-vs-multi-agent-rca",
+  "scenario_count": 3,
+  "repeats_per_scenario": 3,
+  "total_trials_per_mode": 9,
+  "scenarios": [
+    "inventory_error_rate",
+    "inventory_latency",
+    "inventory_unavailable"
+  ],
+  "metrics": {
+    "single_agent": {
+      "root_cause_match": "9/9",
+      "strict_evidence_citation_coverage": "0/9",
+      "mean_confidence": 0.96,
+      "mean_model_tokens": 1268,
+      "mean_latency_seconds": 3.06
+    },
+    "multi_agent": {
+      "root_cause_match": "9/9",
+      "strict_evidence_citation_coverage": "8/9",
+      "mean_confidence": 0.82,
+      "mean_model_tokens": 10555,
+      "mean_latency_seconds": 20.28
+    }
+  },
+  "interpretation": "The deterministic dataset does not show a root-cause accuracy lift. The multi-agent graph improves evidence discipline and auditability at the cost of latency and model usage."
+}

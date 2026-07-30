@@ -22,7 +22,7 @@ This validates the backend workflow, evidence collection, and sandbox recovery p
 
 ## Agent Runtime Comparison
 
-The current comparison uses the same three scenarios with three repeats each.
+The current comparison uses the same three scenarios with three repeats each. A machine-readable summary is available at [benchmarks/agent-comparison-summary.json](benchmarks/agent-comparison-summary.json).
 
 | Metric | Single-agent baseline | Multi-agent graph |
 | --- | ---: | ---: |
@@ -45,3 +45,5 @@ Start the lab and control plane, then run:
 ```
 
 Reports are written under the ignored `artifacts/` directory.
+
+For the design rationale behind these metrics, see [Agent Evaluation](agent-evaluation.md).
