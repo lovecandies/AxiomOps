@@ -93,6 +93,7 @@ def create_control_plane_app(
         OrderFlowProbeTool(settings),
         TraceSnapshotTool(settings),
         ChangeEventTool(settings),
+        lambda: DeepSeekRcaModel(settings),
     )
     active_rca_runtime = rca_runtime or RcaRuntime(
         active_repository,

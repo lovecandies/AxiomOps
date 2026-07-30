@@ -122,6 +122,8 @@ class ToolSelectionItem(BaseModel):
 class ToolSelectionPlan(BaseModel):
     objective: str = Field(min_length=1, max_length=500)
     selections: list[ToolSelectionItem] = Field(default_factory=list, max_length=10)
+    strategy: Literal["model", "deterministic_fallback"] = "deterministic_fallback"
+    rejected_proposals: int = Field(default=0, ge=0)
 
 
 class EvidenceView(BaseModel):

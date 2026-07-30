@@ -1,4 +1,5 @@
 from typing import Any
+from collections.abc import Callable
 from uuid import uuid4
 
 from axiom_ops.control_plane.evidence_repository import EvidenceRepository
@@ -27,6 +28,7 @@ from axiom_ops.control_plane.typed_tools import (
     ServiceHealthTool,
     TraceSnapshotTool,
 )
+from axiom_ops.control_plane.tool_planner import ToolPlanner
 
 
 class EvidenceNotFound(Exception):
@@ -48,6 +50,7 @@ class EvidenceService:
         order_flow_tool: OrderFlowProbeTool | None = None,
         trace_tool: TraceSnapshotTool | None = None,
         change_tool: ChangeEventTool | None = None,
+        tool_planner_factory: Callable[[], ToolPlanner] | None = None,
     ) -> None:
         self.repository = repository
         self.storage = storage
@@ -57,6 +60,7 @@ class EvidenceService:
         self.order_flow_tool = order_flow_tool
         self.trace_tool = trace_tool
         self.change_tool = change_tool
+        self.tool_planner_factory = tool_planner_factory
 
     def _ensure_incident(self, incident_id: str) -> None:
         if not self.repository.incident_exists(incident_id):
@@ -131,9 +135,7 @@ class EvidenceService:
             raise RuntimeError("change tool is not configured")
         return self._persist(incident_id, self.change_tool.execute(tool_input))
 
-    def plan_tool_selection(self, incident_id: str) -> ToolSelectionPlan:
-        self._ensure_incident(incident_id)
-        existing_kinds = {item.kind for item in self.repository.list_for_incident(incident_id)}
+    def _missing_evidence_plan(self, existing_kinds: set[EvidenceKind]) -> ToolSelectionPlan:
         selections: list[ToolSelectionItem] = []
         desired = [
             (
@@ -185,6 +187,42 @@ class EvidenceService:
         return ToolSelectionPlan(
             objective="Collect missing, allowlisted Evidence for this Incident.",
             selections=selections,
+            strategy="deterministic_fallback",
+        )
+
+    def plan_tool_selection(self, incident_id: str) -> ToolSelectionPlan:
+        self._ensure_incident(incident_id)
+        evidence = self.repository.list_for_incident(incident_id)
+        existing_kinds = {item.kind for item in evidence}
+        fallback = self._missing_evidence_plan(existing_kinds)
+        if self.tool_planner_factory is None:
+            return fallback
+        try:
+            proposed = self.tool_planner_factory().plan_tools(
+                {"id": incident_id},
+                [
+                    {"id": item.id, "kind": item.kind.value, "source": item.source}
+                    for item in evidence
+                ],
+            )
+        except Exception:
+            return fallback
+        allowed = {item.tool: item for item in fallback.selections}
+        selections: list[ToolSelectionItem] = []
+        rejected = 0
+        for item in proposed.selections:
+            canonical = allowed.get(item.tool)
+            if canonical is None or any(selected.tool == item.tool for selected in selections):
+                rejected += 1
+                continue
+            selections.append(canonical)
+        if not selections and fallback.selections:
+            return fallback.model_copy(update={"rejected_proposals": rejected})
+        return ToolSelectionPlan(
+            objective=proposed.objective,
+            selections=selections,
+            strategy="model",
+            rejected_proposals=rejected,
         )
 
     def execute_tool_selection(self, incident_id: str) -> list[EvidenceView]:

@@ -144,6 +144,25 @@ class HallucinatingMissingEvidenceModel(ParallelScriptedModel):
         )
 
 
+class SemanticallyUnsupportedModel(ParallelScriptedModel):
+    def synthesize(self, incident, findings) -> RcaDraft:
+        self._calls += 1
+        return RcaDraft(
+            summary="Metric alone proves a deployment caused the outage.",
+            root_cause="An unobserved deployment caused the outage.",
+            confidence=0.92,
+            evidence_ids=["evidence-metric-1"],
+        )
+
+    def verify(self, incident, draft, evidence) -> VerificationResult:
+        self._calls += 1
+        return VerificationResult(
+            decision=VerificationDecision.REJECTED,
+            rationale="The citation is valid but does not establish a deployment cause.",
+            unsupported_claims=["An unobserved deployment caused the outage."],
+        )
+
+
 def test_graph_fans_out_investigators_and_approves_grounded_rca() -> None:
     model = ParallelScriptedModel()
 
@@ -174,6 +193,17 @@ def test_investigator_cannot_claim_facts_without_role_evidence() -> None:
 
     with pytest.raises(RcaGraphError, match="produced claims without Evidence"):
         ReadOnlyRcaGraph(model).invoke(INCIDENT, EVIDENCE)
+
+
+def test_verifier_rejects_semantic_error_with_a_valid_evidence_id() -> None:
+    baseline = ReadOnlyRcaGraph(SemanticallyUnsupportedModel(), enable_verifier=False)
+    guarded = ReadOnlyRcaGraph(SemanticallyUnsupportedModel())
+
+    assert VerificationResult.model_validate(baseline.invoke(INCIDENT, EVIDENCE)["verification"]).decision == VerificationDecision.APPROVED
+    result = guarded.invoke(INCIDENT, EVIDENCE)
+    verification = VerificationResult.model_validate(result["verification"])
+    assert verification.decision == VerificationDecision.REJECTED
+    assert verification.unsupported_claims
 
 
 class FailAtSynthesisModel(ParallelScriptedModel):

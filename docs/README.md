@@ -15,6 +15,7 @@
 | [API 文档](api.md) | 控制台和脚本使用的主要 REST Endpoint |
 | [Benchmark](benchmarks.md) | 当前可复现实验结果和复现方式 |
 | [优化效果评测](optimization-evaluation.md) | 说明 Citation Guard、Evidence 补齐、上下文压缩与 Checkpoint 的对照口径 |
+| [受控 Planner 与 Verifier 评测设计](agent-planner-verifier-evaluation-design.md) | 说明模型提议、后端工具门禁和语义对抗评测边界 |
 | [架构决策记录](adr/) | 说明 Agentic Workflow、Evidence、恢复门禁、Outbox、Memory 与多 Agent 的关键取舍 |
 
 ## 推荐阅读顺序

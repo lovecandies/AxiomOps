@@ -8,7 +8,14 @@ from axiom_ops.control_plane.evidence_storage import (
     EvidenceIntegrityError,
     EvidenceStorage,
 )
-from axiom_ops.control_plane.models import EvidenceView, HealthToolInput, MetricsToolInput
+from axiom_ops.control_plane.models import (
+    DiagnosticToolName,
+    EvidenceView,
+    HealthToolInput,
+    MetricsToolInput,
+    ToolSelectionItem,
+    ToolSelectionPlan,
+)
 
 
 class MissingIncidentRepository:
@@ -51,6 +58,18 @@ class ExistingEvidenceRepository:
             )
             for index, kind in enumerate(self.kinds)
         ]
+
+
+class ProposalPlanner:
+    def plan_tools(self, incident, evidence_catalog) -> ToolSelectionPlan:
+        return ToolSelectionPlan(
+            objective="Collect causal evidence.",
+            selections=[
+                ToolSelectionItem(tool=DiagnosticToolName.METRICS, reason="valid"),
+                ToolSelectionItem(tool=DiagnosticToolName.METRICS, reason="duplicate"),
+                ToolSelectionItem(tool=DiagnosticToolName.FAULT_STATE, reason="already exists"),
+            ],
+        )
 
 
 def test_evidence_storage_is_write_once_and_hash_verified(tmp_path: Path) -> None:
@@ -118,3 +137,21 @@ def test_tool_selection_plans_only_missing_allowlisted_evidence(tmp_path: Path) 
         "change",
     ]
     assert all(selection.reason for selection in plan.selections)
+
+
+def test_model_tool_plan_is_canonicalized_and_rejects_duplicates(tmp_path: Path) -> None:
+    tool = FailingIfExecutedTool()
+    service = EvidenceService(
+        ExistingEvidenceRepository(["FAULT_STATE", "ORDER_FLOW_PROBE"]),
+        EvidenceStorage(tmp_path),
+        tool,
+        tool,
+        tool_planner_factory=ProposalPlanner,
+    )
+
+    plan = service.plan_tool_selection("incident-1")
+
+    assert plan.strategy == "model"
+    assert [item.tool for item in plan.selections] == ["metrics"]
+    assert plan.selections[0].tool_input == {"signal": "order_downstream_failures"}
+    assert plan.rejected_proposals == 2

@@ -200,6 +200,7 @@ docs/                       公开项目文档
 - [API 文档](docs/api.md)
 - [Benchmark](docs/benchmarks.md)
 - [优化效果评测](docs/optimization-evaluation.md)
+- [受控 Planner 与 Verifier 评测设计](docs/agent-planner-verifier-evaluation-design.md)
 - [架构决策记录](docs/adr/)
 
 ## 安全说明

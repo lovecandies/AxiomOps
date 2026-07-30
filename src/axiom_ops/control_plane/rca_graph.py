@@ -50,8 +50,9 @@ def step(node_name: str, output: dict[str, Any], role: str | None = None) -> dic
 
 
 class ReadOnlyRcaGraph:
-    def __init__(self, model: RcaModel, checkpointer=None) -> None:
+    def __init__(self, model: RcaModel, checkpointer=None, enable_verifier: bool = True) -> None:
         self.model = model
+        self.enable_verifier = enable_verifier
         self.graph = self._build(checkpointer)
 
     def _build(self, checkpointer=None):
@@ -63,6 +64,7 @@ class ReadOnlyRcaGraph:
         builder.add_node("citation_guard", self._citation_guard)
         builder.add_node("reject_citations", self._reject_citations)
         builder.add_node("verifier", self._verifier)
+        builder.add_node("approve_without_verifier", self._approve_without_verifier)
         builder.add_edge(START, "load_context")
         builder.add_edge("load_context", "commander")
         builder.add_conditional_edges("commander", self._fan_out, ["investigate"])
@@ -71,7 +73,7 @@ class ReadOnlyRcaGraph:
         builder.add_conditional_edges(
             "citation_guard",
             self._route_after_citation_guard,
-            ["reject_citations", "verifier"],
+            ["reject_citations", "verifier", "approve_without_verifier"],
         )
         builder.add_edge("reject_citations", END)
         builder.add_edge("verifier", END)
@@ -173,9 +175,10 @@ class ReadOnlyRcaGraph:
             "steps": [step("citation_guard", output)],
         }
 
-    @staticmethod
-    def _route_after_citation_guard(state: RcaState) -> str:
-        return "reject_citations" if state["citation_errors"] else "verifier"
+    def _route_after_citation_guard(self, state: RcaState) -> str:
+        if state["citation_errors"]:
+            return "reject_citations"
+        return "verifier" if self.enable_verifier else "approve_without_verifier"
 
     def _reject_citations(self, state: RcaState) -> dict[str, Any]:
         verification = VerificationResult(
@@ -204,6 +207,13 @@ class ReadOnlyRcaGraph:
             "verification": output,
             "steps": [step("verifier", output, "independent_verifier")],
         }
+
+    def _approve_without_verifier(self, state: RcaState) -> dict[str, Any]:
+        verification = VerificationResult(
+            decision=VerificationDecision.APPROVED,
+            rationale="Verifier disabled for an evaluation baseline only.",
+        )
+        return {"verification": verification.model_dump(mode="json"), "steps": [step("approve_without_verifier", verification.model_dump(mode="json"))]}
 
     def invoke(
         self,
