@@ -28,6 +28,7 @@ docs/upstream-audit.md
 docs/*interview*
 docs/*resume*
 docs/AxiomOps-*综合手册.md
+docs/AxiomOps-技术手册（更新版）.md
 docs/*metrics-audit*
 docs/*blueprint*
 scripts/run_agent_comparison.py
